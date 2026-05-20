@@ -10,6 +10,10 @@ The product is a careful helper, not an aggressive claims engine. It should help
 
 Consumers often know something went wrong with a charge, subscription, delivery, cancellation, or refund, but they do not know what evidence their bank needs. The MVP should reduce confusion and preparation time by turning scattered receipts, emails, screenshots, tracking details, and notes into a structured dispute packet.
 
+### Public Page Goal
+
+The public page should optimize for **educate + convert**. It must explain what Chargeback Copilot does, when it is appropriate to use, what evidence consumers need, and what the product will not do. The goal is to help legitimate users self-select into packet preparation while discouraging fabricated, exaggerated, or unsupported disputes.
+
 ## 2. Problem
 
 When consumers dispute a card charge, they are usually forced into a confusing process across their bank app, merchant support, email inbox, receipts, screenshots, and memory. Many legitimate disputes are weakly documented because consumers do not know what matters.
@@ -81,15 +85,20 @@ The MVP focuses on helping a consumer prepare a bank-ready dispute packet. It do
 
 ### In Scope
 
+- Public education/conversion page
+- Prototype login gate into a private workspace
+- Private dashboard with In Progress, Completed, and Start New Packet tabs
 - Guided dispute intake
 - Reason/category selection
 - Evidence checklist
 - Evidence upload or manual evidence entry
 - Timeline builder
 - Claim strength and gap review
+- Readiness score and evidence progress
 - Cited dispute explanation
 - Bank-ready packet export
 - Next-step checklist
+- Real-life outcome feedback for completed packets
 
 ### Out Of Scope For MVP
 
@@ -103,9 +112,24 @@ The MVP focuses on helping a consumer prepare a bank-ready dispute packet. It do
 
 ## 6. Core User Flow
 
+### 0. Learn On Public Page
+
+The user first sees a public page that explains:
+
+- Chargeback Copilot helps prepare dispute packets.
+- The product is for legitimate disputes only.
+- Useful evidence includes receipts, emails, chats, screenshots, tracking details, cancellation confirmations, and issuer messages.
+- The product does not provide legal advice, financial advice, direct bank submission, or outcome guarantees.
+
+The primary call to action is **Start preparing a packet**.
+
+### 0.5. Prototype Login
+
+For the MVP, login is a prototype gate rather than real authentication. Selecting the public-page call to action takes the user into the private workspace with a clear explanation that no real account or password is being used in the prototype.
+
 ### 1. Start Dispute
 
-The user starts a new dispute packet and enters:
+Inside the private workspace, the user can select **Start New Packet** and enter:
 
 - Merchant name
 - Charge amount
@@ -191,6 +215,16 @@ Every factual claim must cite one or more evidence artifacts. If evidence is mis
 
 The user exports the packet as Markdown, HTML, or PDF-ready content. The MVP does not submit the dispute directly.
 
+### 9. Record Outcome Feedback
+
+After a completed/export-ready packet has been submitted through the user's official issuer channel, the user can record the real-life result:
+
+- Pending
+- Success
+- Failure
+
+The user may add an optional note about what happened. Outcome feedback is for personal tracking and future product learning only. It must not be shown as a prediction, guarantee, or advice.
+
 ## 7. Functional Requirements
 
 ### Dispute Intake
@@ -198,6 +232,28 @@ The user exports the packet as Markdown, HTML, or PDF-ready content. The MVP doe
 - Create a consumer dispute packet.
 - Capture basic charge, merchant, and issuer information.
 - Allow users to update dispute status and notes.
+
+### Public Page And Prototype Login
+
+- Show a public education/conversion page before the private workspace.
+- Explain legitimate use, evidence needs, and safety boundaries.
+- Provide a prototype login/start CTA that enters the private workspace without real authentication.
+- Do not imply that using the product guarantees a refund or issuer success.
+
+### Private Dashboard
+
+- Show dashboard tabs for In Progress, Completed, and Start New Packet.
+- Derive packet status from readiness and packet validation:
+  - In Progress: missing required evidence, no generated packet, blocked packet, or draft state.
+  - Completed: generated packet with no validation errors and no high-severity gaps.
+- Show dashboard summary metrics:
+  - total packets
+  - in-progress packets
+  - completed/export-ready packets
+  - packets with high-priority evidence gaps
+  - completed packets with reported success/failure
+- Show readiness score based on required checklist completion.
+- Show evidence progress as satisfied required items out of total required items.
 
 ### Reason Selection
 
@@ -235,6 +291,14 @@ The user exports the packet as Markdown, HTML, or PDF-ready content. The MVP doe
 - Export bank-ready packet as Markdown or HTML in MVP.
 - Include evidence index and citation IDs.
 - Include a disclaimer that the packet is preparation support, not legal or financial advice.
+
+### Outcome Feedback
+
+- Allow outcome feedback only for completed/export-ready packets.
+- Support feedback values: pending, success, and failure.
+- Support an optional user note describing the real-life issuer update.
+- Show outcome status on completed packet cards and packet detail.
+- Treat feedback as tracking data, not prediction, advice, or proof of product efficacy.
 
 ## 8. AI And Guardrails
 
@@ -337,6 +401,17 @@ Key fields:
 - validation status
 - created timestamp
 
+### Outcome Feedback
+
+Represents a user's real-life update after submitting a completed packet through their official issuer channel.
+
+Key fields:
+
+- dispute ID
+- outcome: pending, success, or failure
+- optional note
+- updated timestamp
+
 ## 10. Success Metrics
 
 ### North Star Metric
@@ -350,6 +425,8 @@ Completed legitimate dispute packets per month.
 - Percent of packets with complete evidence checklists
 - Percent of generated claims with valid citations
 - User-reported confidence after packet preparation
+- In-progress to completed packet conversion rate
+- Completed packets with outcome feedback submitted
 
 ### Guardrail Metrics
 
@@ -358,6 +435,7 @@ Completed legitimate dispute packets per month.
 - Evidence gap acknowledgement rate
 - User confusion reports
 - Complaint rate around misleading or overly aggressive language
+- Outcome feedback misuse reports, such as interpreting results as guarantees or predictions
 
 ## 11. Responsible AI And Compliance Considerations
 
@@ -409,13 +487,14 @@ Exit criteria:
 
 ### Public MVP
 
-Launch with manual export, clear disclaimers, and no direct bank submission.
+Launch with a public education/conversion page, prototype private workspace, manual export, clear disclaimers, outcome feedback tracking, and no direct bank submission.
 
 Exit criteria:
 
 - Stable packet completion rate.
 - Low confusion reports.
 - No material safety issues around false or unsupported claims.
+- Users understand that outcome feedback is tracking only, not advice or prediction.
 
 ## 13. Open Questions
 
@@ -424,6 +503,8 @@ Exit criteria:
 - Should the MVP support file uploads immediately, or start with manual evidence entry first?
 - Should the product include merchant-contact templates before recommending bank dispute preparation?
 - Should the first version support only credit cards, or debit card disputes as well?
+- Should outcome feedback be used only for user-visible tracking in v1, or later feed aggregate product analytics?
+- Should completed packets remain editable after a user records success/failure?
 
 ## 14. Acceptance Criteria
 
@@ -433,3 +514,8 @@ Exit criteria:
 - Weak or unsupported cases are represented as evidence gaps.
 - The product avoids legal advice, financial advice, guaranteed outcomes, and fabricated claims.
 - Direct bank submission is explicitly out of scope for v1.
+- Public page explains legitimate use, evidence needs, and product limitations.
+- Prototype login clearly separates public and private experiences without implying real account security.
+- Private workspace includes In Progress, Completed, and Start New Packet tabs.
+- Completed packets allow users to record pending, success, or failure outcome feedback.
+- Outcome feedback is never represented as prediction, guarantee, legal advice, financial advice, or issuer guidance.

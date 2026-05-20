@@ -70,6 +70,10 @@ class Handler(BaseHTTPRequestHandler):
                 dispute_id = path.split("/")[3]
                 self._send_json(api.generate_packet(dispute_id))
                 return
+            if path.startswith("/api/disputes/") and path.endswith("/outcome"):
+                dispute_id = path.split("/")[3]
+                self._send_json(api.save_outcome_feedback(dispute_id, body))
+                return
             self._send_json({"error": "Not found"}, status=404)
         except Exception as exc:
             self._handle_error(exc)
@@ -99,4 +103,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

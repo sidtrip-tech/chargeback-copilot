@@ -7,9 +7,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from chargeback_copilot.models import CitedClaim
+from chargeback_copilot.dashboard import derived_status, evidence_progress, readiness_score
 from chargeback_copilot.packets import generate_template_packet
 from chargeback_copilot.planning import checklist_status, find_gaps, get_plan
 from chargeback_copilot.seed_data import DISPUTES, EVIDENCE
+from chargeback_copilot.store import get_outcome, init_db, save_outcome
+from chargeback_copilot.models import OutcomeFeedback
 from chargeback_copilot.timeline import build_timeline
 from chargeback_copilot.validation import export_readiness, validate_claims
 
@@ -70,7 +73,36 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertFalse(export_readiness([], True, True)[0])
         self.assertTrue(export_readiness([], False, True)[0])
 
+    def test_readiness_score_and_progress(self):
+        item = dispute("case_sub_001")
+        statuses = checklist_status(get_plan(item.category), evidence(item.id))
+        self.assertEqual(readiness_score(statuses), 100)
+        self.assertEqual(evidence_progress(statuses), (3, 3))
+
+    def test_derived_status_completed_vs_in_progress(self):
+        complete = dispute("case_sub_001")
+        complete_packet = generate_template_packet(complete, evidence(complete.id))
+        complete_gaps = find_gaps(get_plan(complete.category), evidence(complete.id))
+        self.assertEqual(derived_status(complete_packet, complete_gaps), "completed")
+
+        incomplete = dispute("case_delivery_002")
+        incomplete_packet = generate_template_packet(incomplete, evidence(incomplete.id))
+        incomplete_gaps = find_gaps(get_plan(incomplete.category), evidence(incomplete.id))
+        self.assertEqual(derived_status(incomplete_packet, incomplete_gaps), "in_progress")
+
+    def test_outcome_feedback_save_and_read(self):
+        init_db()
+        feedback = OutcomeFeedback(
+            dispute_id="case_sub_001",
+            outcome="success",
+            note="Issuer credited the account.",
+            updated_at="2026-05-20T12:30:00Z",
+        )
+        save_outcome(feedback)
+        stored = get_outcome("case_sub_001")
+        self.assertEqual(stored.outcome, "success")
+        self.assertEqual(stored.note, "Issuer credited the account.")
+
 
 if __name__ == "__main__":
     unittest.main()
-

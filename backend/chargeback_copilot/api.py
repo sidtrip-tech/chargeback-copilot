@@ -4,17 +4,20 @@ from html import escape
 from typing import Any, Dict
 from uuid import uuid4
 
-from .models import ConsumerDispute, EvidenceArtifact
+from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
+from .models import ConsumerDispute, EvidenceArtifact, OutcomeFeedback
 from .packets import generate_template_packet
 from .planning import checklist_status, find_gaps, get_plan
 from .store import (
     get_dispute,
     get_latest_packet,
+    get_outcome,
     init_db,
     list_disputes,
     list_evidence,
     save_dispute,
     save_evidence,
+    save_outcome,
     save_packet,
 )
 from .timeline import build_timeline
@@ -30,15 +33,50 @@ def boot() -> None:
 
 
 def list_cases() -> Dict[str, Any]:
-    return {"disputes": [asdict(dispute) for dispute in list_disputes()]}
+    disputes = []
+    summary = {
+        "total": 0,
+        "in_progress": 0,
+        "completed": 0,
+        "high_gap": 0,
+        "reported_success": 0,
+        "reported_failure": 0,
+    }
+    for dispute in list_disputes():
+        details = detail(dispute.id)
+        summary["total"] += 1
+        summary[details["derived_status"]] += 1
+        if any(gap["severity"] == "high" for gap in details["evidence_gaps"]):
+            summary["high_gap"] += 1
+        outcome = details["outcome_feedback"]
+        if outcome and outcome["outcome"] == "success":
+            summary["reported_success"] += 1
+        if outcome and outcome["outcome"] == "failure":
+            summary["reported_failure"] += 1
+        disputes.append(
+            {
+                **details["dispute"],
+                "plan_label": details["plan"]["label"],
+                "derived_status": details["derived_status"],
+                "readiness_score": details["readiness_score"],
+                "export_ready": details["export_ready"],
+                "outcome_feedback": outcome,
+                "high_gap_count": sum(1 for gap in details["evidence_gaps"] if gap["severity"] == "high"),
+            }
+        )
+    return {"disputes": disputes, "summary": summary}
 
 
 def detail(dispute_id: str) -> Dict[str, Any]:
     dispute = get_dispute(dispute_id)
     artifacts = list_evidence(dispute_id)
     plan = get_plan(dispute.category)
+    checklist = checklist_status(plan, artifacts)
     gaps = find_gaps(plan, artifacts)
     packet = get_latest_packet(dispute_id)
+    outcome = get_outcome(dispute_id)
+    status = derived_status(packet, gaps)
+    satisfied, required = evidence_progress(checklist)
     ready, reason = export_readiness(
         packet.validation_errors if packet else [],
         any(gap.severity == "high" for gap in gaps),
@@ -51,12 +89,17 @@ def detail(dispute_id: str) -> Dict[str, Any]:
             "label": plan.label,
             "description": plan.description,
             "careful_guidance": plan.careful_guidance,
-            "checklist": checklist_status(plan, artifacts),
+            "checklist": checklist,
         },
         "evidence": [asdict(item) for item in artifacts],
         "timeline": [asdict(item) for item in build_timeline(artifacts)],
         "evidence_gaps": [asdict(gap) for gap in gaps],
         "packet": asdict(packet) if packet else None,
+        "outcome_feedback": asdict(outcome) if outcome else None,
+        "derived_status": status,
+        "readiness_score": readiness_score(checklist),
+        "evidence_progress": {"satisfied_required": satisfied, "total_required": required},
+        "next_steps": next_step_prompts(packet, gaps),
         "export_ready": ready,
         "export_reason": reason,
     }
@@ -100,6 +143,24 @@ def generate_packet(dispute_id: str) -> Dict[str, Any]:
     artifacts = list_evidence(dispute_id)
     packet = generate_template_packet(dispute, artifacts)
     save_packet(packet)
+    return detail(dispute_id)
+
+
+def save_outcome_feedback(dispute_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    current = detail(dispute_id)
+    if current["derived_status"] != "completed":
+        raise ValueError("Outcome feedback is available only for completed packets.")
+    outcome = payload.get("outcome")
+    if outcome not in {"success", "failure", "pending"}:
+        raise ValueError("Outcome must be success, failure, or pending.")
+    save_outcome(
+        OutcomeFeedback(
+            dispute_id=dispute_id,
+            outcome=outcome,
+            note=payload.get("note", "").strip(),
+            updated_at=utc_now(),
+        )
+    )
     return detail(dispute_id)
 
 
@@ -159,4 +220,3 @@ def export_packet(dispute_id: str) -> str:
   <p><small>{escape(packet['disclaimer'])}</small></p>
 </body>
 </html>"""
-

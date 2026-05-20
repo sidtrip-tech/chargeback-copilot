@@ -9,6 +9,7 @@ from .models import (
     ConsumerDispute,
     EvidenceArtifact,
     EvidenceGap,
+    OutcomeFeedback,
     Packet,
     TimelineEvent,
 )
@@ -43,6 +44,10 @@ def init_db(db_path: Path = DB_PATH) -> None:
                 dispute_id TEXT NOT NULL,
                 payload TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS outcomes (
+                dispute_id TEXT PRIMARY KEY,
+                payload TEXT NOT NULL
+            );
             """
         )
         if conn.execute("SELECT COUNT(*) FROM disputes").fetchone()[0] == 0:
@@ -68,6 +73,10 @@ def _load_packet(payload: str) -> Packet:
     data["timeline"] = [TimelineEvent(**event) for event in data["timeline"]]
     data["evidence_gaps"] = [EvidenceGap(**gap) for gap in data["evidence_gaps"]]
     return Packet(**data)
+
+
+def _load_outcome(payload: str) -> OutcomeFeedback:
+    return OutcomeFeedback(**json.loads(payload))
 
 
 def list_disputes() -> List[ConsumerDispute]:
@@ -147,3 +156,23 @@ def get_latest_packet(dispute_id: str) -> Optional[Packet]:
     finally:
         conn.close()
 
+
+def save_outcome(outcome: OutcomeFeedback) -> None:
+    conn = connect()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO outcomes VALUES (?, ?)",
+            (outcome.dispute_id, json.dumps(asdict(outcome))),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_outcome(dispute_id: str) -> Optional[OutcomeFeedback]:
+    conn = connect()
+    try:
+        row = conn.execute("SELECT payload FROM outcomes WHERE dispute_id = ?", (dispute_id,)).fetchone()
+        return _load_outcome(row["payload"]) if row else None
+    finally:
+        conn.close()

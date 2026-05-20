@@ -7,7 +7,90 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div id="app">
+    <div id="publicPage" class="public-page">
+      <header class="public-nav">
+        <div class="brand compact">
+          <div class="brand-mark">CC</div>
+          <div>
+            <h1>Chargeback Copilot</h1>
+            <p>Prepare your card dispute packet</p>
+          </div>
+        </div>
+        <button class="loginCta">Demo login</button>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Consumer dispute preparation</p>
+            <h2>Turn receipts, emails, and notes into a clearer card dispute packet.</h2>
+            <p>
+              Chargeback Copilot helps you organize legitimate dispute evidence, spot missing support,
+              and prepare a bank-ready packet without exaggerating your case.
+            </p>
+            <div class="hero-actions">
+              <button class="loginCta">Start preparing a packet</button>
+              <a href="#how-it-works" class="button ghost">How it works</a>
+            </div>
+          </div>
+          <div class="hero-panel">
+            <div class="mini-card">
+              <span class="pill">Careful helper</span>
+              <h3>What it will not do</h3>
+              <ul>
+                <li>No legal or financial advice</li>
+                <li>No refund or dispute-win guarantees</li>
+                <li>No fabricated or unsupported claims</li>
+              </ul>
+            </div>
+            <div class="mini-card">
+              <h3>What it helps prepare</h3>
+              <p>Timeline, evidence checklist, cited claims, suggested issuer message, and next steps.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="how-it-works" class="public-section">
+          <div class="section-heading">
+            <p class="eyebrow">How it works</p>
+            <h2>Designed for legitimate disputes, not guesswork.</h2>
+          </div>
+          <div class="info-grid">
+            <article>
+              <h3>1. Choose the situation</h3>
+              <p>Pick the closest category, like canceled subscription, non-delivery, unauthorized charge, or refund not received.</p>
+            </article>
+            <article>
+              <h3>2. Add evidence</h3>
+              <p>Enter receipts, emails, chat summaries, cancellation confirmations, tracking records, and issuer messages.</p>
+            </article>
+            <article>
+              <h3>3. Review gaps</h3>
+              <p>The app flags weak spots before you create a packet, so missing proof is visible instead of papered over.</p>
+            </article>
+            <article>
+              <h3>4. Export your packet</h3>
+              <p>Generate a cited packet you can review and submit through your bank or card issuer’s official process.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="public-section bands">
+          <div>
+            <p class="eyebrow">Common uses</p>
+            <h2>Useful when the facts are real but scattered.</h2>
+          </div>
+          <div class="band-list">
+            <span>Subscription canceled but charged</span>
+            <span>Item or service not received</span>
+            <span>Refund promised but missing</span>
+            <span>Charge not recognized</span>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="privateApp" class="private-app hidden">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">CC</div>
@@ -16,15 +99,20 @@
             <p>Prepare your card dispute packet</p>
           </div>
         </div>
-        <button id="newCaseBtn" class="new-case">New dispute packet</button>
-        <div id="caseList" class="case-list"></div>
+        <nav class="tabs" aria-label="Packet status menu">
+          <button class="tab active" data-tab="in_progress">In Progress</button>
+          <button class="tab" data-tab="completed">Completed</button>
+          <button class="tab" data-tab="start_new">Start New Packet</button>
+        </nav>
+        <button id="backToPublicBtn" class="subtle-button">Public page</button>
+        <p class="demo-note">Prototype login: no account or password is stored.</p>
       </aside>
 
       <main class="workspace">
         <section class="topbar">
           <div>
-            <p class="eyebrow">Careful helper mode</p>
-            <h2 id="caseTitle">Loading...</h2>
+            <p class="eyebrow">Private workspace</p>
+            <h2 id="workspaceTitle">In Progress Packets</h2>
           </div>
           <div class="topbar-actions">
             <button id="generateBtn">Generate packet</button>
@@ -34,9 +122,12 @@
 
         <div id="notice" class="notice hidden"></div>
 
-        <section id="newCasePanel" class="panel hidden">
+        <section id="summaryCards" class="summary-cards"></section>
+
+        <section id="startNewView" class="panel hidden">
           <div class="panel-heading">
             <h3>Start A New Dispute Packet</h3>
+            <span class="pill">Manual evidence entry</span>
           </div>
           <form id="newCaseForm" class="form-grid">
             <label>Merchant name<input name="merchant_name" required placeholder="Example: Streamly Pro" /></label>
@@ -56,77 +147,105 @@
           </form>
         </section>
 
-        <section class="summary-grid">
-          <div class="panel">
-            <p class="label">Dispute</p>
-            <div id="disputeSummary"></div>
-          </div>
-          <div class="panel">
-            <p class="label">Category Guidance</p>
-            <p id="guidance"></p>
-          </div>
-          <div class="panel">
-            <p class="label">Export Readiness</p>
-            <p id="readiness"></p>
-          </div>
-        </section>
-
-        <section class="main-grid">
-          <div class="panel">
-            <div class="panel-heading">
-              <h3>Evidence Checklist</h3>
+        <section id="dashboardView" class="dashboard-layout">
+          <div class="case-column">
+            <div class="panel">
+              <div class="panel-heading">
+                <h3 id="caseListTitle">In Progress</h3>
+              </div>
+              <div id="caseList" class="case-list"></div>
             </div>
-            <div id="checklist"></div>
           </div>
 
-          <div class="panel">
-            <div class="panel-heading">
-              <h3>Add Evidence</h3>
-            </div>
-            <form id="evidenceForm" class="stack-form">
-              <label>Evidence type
-                <select name="type" required>
-                  <option value="statement_transaction">Card statement transaction</option>
-                  <option value="cancellation_confirmation">Cancellation confirmation</option>
-                  <option value="merchant_message">Merchant message</option>
-                  <option value="terms_or_policy">Terms or policy</option>
-                  <option value="order_confirmation">Order confirmation</option>
-                  <option value="delivery_status">Tracking or delivery status</option>
-                  <option value="service_status">Service status</option>
-                  <option value="refund_promise">Refund promise</option>
-                  <option value="return_proof">Return proof</option>
-                  <option value="merchant_relationship">Merchant relationship note</option>
-                  <option value="issuer_alert">Bank alert</option>
-                </select>
-              </label>
-              <label>Title<input name="title" required placeholder="Example: Cancellation email" /></label>
-              <label>Source<input name="source" placeholder="Example: Gmail, Chase app, support chat" /></label>
-              <label>Date<input name="occurred_at" required type="date" /></label>
-              <label>Summary<textarea name="summary" rows="4" required placeholder="State only what this evidence shows."></textarea></label>
-              <button type="submit">Add evidence</button>
-            </form>
-          </div>
+          <div id="detailColumn" class="detail-column">
+            <section class="summary-grid">
+              <div class="panel">
+                <p class="label">Dispute</p>
+                <div id="disputeSummary"></div>
+              </div>
+              <div class="panel">
+                <p class="label">Readiness</p>
+                <div id="readinessPanel"></div>
+              </div>
+              <div class="panel">
+                <p class="label">Guidance</p>
+                <p id="guidance"></p>
+              </div>
+            </section>
 
-          <div class="panel">
-            <div class="panel-heading">
-              <h3>Evidence Gaps</h3>
-            </div>
-            <div id="gaps"></div>
-          </div>
+            <section class="main-grid">
+              <div class="panel">
+                <div class="panel-heading">
+                  <h3>Evidence Checklist</h3>
+                </div>
+                <div id="checklist"></div>
+              </div>
 
-          <div class="panel">
-            <div class="panel-heading">
-              <h3>Evidence Timeline</h3>
-            </div>
-            <div id="timeline"></div>
-          </div>
+              <div class="panel">
+                <div class="panel-heading">
+                  <h3>Add Evidence</h3>
+                </div>
+                <form id="evidenceForm" class="stack-form">
+                  <label>Evidence type
+                    <select name="type" required>
+                      <option value="statement_transaction">Card statement transaction</option>
+                      <option value="cancellation_confirmation">Cancellation confirmation</option>
+                      <option value="merchant_message">Merchant message</option>
+                      <option value="terms_or_policy">Terms or policy</option>
+                      <option value="order_confirmation">Order confirmation</option>
+                      <option value="delivery_status">Tracking or delivery status</option>
+                      <option value="service_status">Service status</option>
+                      <option value="refund_promise">Refund promise</option>
+                      <option value="return_proof">Return proof</option>
+                      <option value="merchant_relationship">Merchant relationship note</option>
+                      <option value="issuer_alert">Bank alert</option>
+                    </select>
+                  </label>
+                  <label>Title<input name="title" required placeholder="Example: Cancellation email" /></label>
+                  <label>Source<input name="source" placeholder="Example: Gmail, Chase app, support chat" /></label>
+                  <label>Date<input name="occurred_at" required type="date" /></label>
+                  <label>Summary<textarea name="summary" rows="4" required placeholder="State only what this evidence shows."></textarea></label>
+                  <button type="submit">Add evidence</button>
+                </form>
+              </div>
 
-          <div class="panel wide">
-            <div class="panel-heading">
-              <h3>Generated Packet</h3>
-              <span id="packetStatus" class="pill"></span>
-            </div>
-            <div id="packet" class="empty-state">Generate a packet after reviewing the checklist and evidence gaps.</div>
+              <div class="panel">
+                <div class="panel-heading">
+                  <h3>Evidence Gaps</h3>
+                </div>
+                <div id="gaps"></div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-heading">
+                  <h3>Next Steps</h3>
+                </div>
+                <div id="nextSteps"></div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-heading">
+                  <h3>Evidence Timeline</h3>
+                </div>
+                <div id="timeline"></div>
+              </div>
+
+              <div class="panel">
+                <div class="panel-heading">
+                  <h3>Outcome Feedback</h3>
+                  <span class="pill">Completed only</span>
+                </div>
+                <div id="outcomePanel"></div>
+              </div>
+
+              <div class="panel wide">
+                <div class="panel-heading">
+                  <h3>Generated Packet</h3>
+                  <span id="packetStatus" class="pill"></span>
+                </div>
+                <div id="packet" class="empty-state">Generate a packet after reviewing the checklist and evidence gaps.</div>
+              </div>
+            </section>
           </div>
         </section>
       </main>
@@ -134,4 +253,3 @@
     <script src="/app.js"></script>
   </body>
 </html>
-

@@ -92,3 +92,10 @@ class Packet:
     fallback_used: bool = False
     fallback_reason: Optional[str] = None
 
+
+@dataclass(frozen=True)
+class OutcomeFeedback:
+    dispute_id: str
+    outcome: str
+    note: str
+    updated_at: str

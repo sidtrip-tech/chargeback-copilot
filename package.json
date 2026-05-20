@@ -1,0 +1,10 @@
+{
+  "name": "chargeback-copilot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "python3 backend/server.py",
+    "test": "python3 -m unittest discover backend/tests"
+  }
+}
+

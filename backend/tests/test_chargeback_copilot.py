@@ -139,10 +139,31 @@ class ChargebackCopilotTests(unittest.TestCase):
         email = f"test-{uuid4().hex[:8]}@example.com"
         signup = api.signup({"name": "Test User", "email": email, "password": "secure-test-password"})
         self.assertEqual(signup["user"]["email"], email)
+        self.assertFalse(signup["user"]["email_verified"])
 
         login = api.login({"email": email, "password": "secure-test-password"})
         current = api.current_user(login["token"])
         self.assertEqual(current["email"], email)
+
+    def test_email_verification_marks_user_verified(self):
+        init_db()
+        email = f"verify-{uuid4().hex[:8]}@example.com"
+        signup = api.signup({"name": "Verify User", "email": email, "password": "secure-test-password"})
+        token = api._create_auth_token(signup["user"]["id"], "email_verification", 1)
+        api.verify_email({"token": token.token})
+        login = api.login({"email": email, "password": "secure-test-password"})
+        self.assertTrue(login["user"]["email_verified"])
+
+    def test_password_reset_updates_password(self):
+        init_db()
+        email = f"reset-{uuid4().hex[:8]}@example.com"
+        signup = api.signup({"name": "Reset User", "email": email, "password": "old-password"})
+        token = api._create_auth_token(signup["user"]["id"], "password_reset", 1)
+        api.reset_password({"token": token.token, "password": "new-password"})
+        login = api.login({"email": email, "password": "new-password"})
+        self.assertEqual(login["user"]["email"], email)
+        with self.assertRaises(PermissionError):
+            api.login({"email": email, "password": "old-password"})
 
     def test_login_rejects_bad_password(self):
         init_db()

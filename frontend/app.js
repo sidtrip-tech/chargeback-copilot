@@ -78,8 +78,17 @@ async function enterPrivate(data) {
   state.user = data.user;
   $("publicPage").classList.add("hidden");
   $("privateApp").classList.remove("hidden");
+  renderAccountStatus();
   showPublicNotice("");
   loadDisputes().catch((error) => showNotice(error.message));
+}
+
+function renderAccountStatus() {
+  if (!state.user) return;
+  $("accountStatus").textContent = state.user.email_verified
+    ? `${state.user.email} · email verified`
+    : `${state.user.email} · email not verified`;
+  $("verifyEmailBtn").classList.toggle("hidden", Boolean(state.user.email_verified));
 }
 
 async function demoLogin() {
@@ -95,6 +104,9 @@ async function signup(event) {
   const data = await request("/api/auth/signup", { method: "POST", body: JSON.stringify(body) });
   formEl.reset();
   await enterPrivate(data);
+  if (!data.email_verification_sent) {
+    showNotice("Account created. Email delivery is not configured yet, so verification email was not sent.");
+  }
 }
 
 async function signin(event) {
@@ -105,6 +117,38 @@ async function signin(event) {
   const data = await request("/api/auth/login", { method: "POST", body: JSON.stringify(body) });
   formEl.reset();
   await enterPrivate(data);
+}
+
+async function requestPasswordReset(event) {
+  event.preventDefault();
+  const formEl = event.currentTarget;
+  const body = Object.fromEntries(new FormData(formEl).entries());
+  const data = await request("/api/auth/request-password-reset", { method: "POST", body: JSON.stringify(body) });
+  formEl.reset();
+  showPublicNotice(data.message);
+}
+
+async function resetPassword(event) {
+  event.preventDefault();
+  const formEl = event.currentTarget;
+  const body = Object.fromEntries(new FormData(formEl).entries());
+  await request("/api/auth/reset-password", { method: "POST", body: JSON.stringify(body) });
+  formEl.reset();
+  showPublicNotice("Password updated. You can sign in with the new password.");
+}
+
+async function verifyEmail(event) {
+  event.preventDefault();
+  const formEl = event.currentTarget;
+  const body = Object.fromEntries(new FormData(formEl).entries());
+  await request("/api/auth/verify-email", { method: "POST", body: JSON.stringify(body) });
+  formEl.reset();
+  showPublicNotice("Email verified.");
+}
+
+async function requestEmailVerification() {
+  const data = await request("/api/auth/request-email-verification", { method: "POST", body: "{}" });
+  showNotice(data.email_sent ? "Verification email sent." : "Email delivery is not configured yet.");
 }
 
 async function logoutToPublic() {
@@ -692,7 +736,11 @@ document.querySelectorAll(".loginCta").forEach((button) => button.addEventListen
 $("demoLoginBtn").addEventListener("click", () => demoLogin().catch((error) => showPublicNotice(error.message)));
 $("signupForm").addEventListener("submit", (event) => signup(event).catch((error) => showPublicNotice(error.message)));
 $("signinForm").addEventListener("submit", (event) => signin(event).catch((error) => showPublicNotice(error.message)));
+$("passwordResetRequestForm").addEventListener("submit", (event) => requestPasswordReset(event).catch((error) => showPublicNotice(error.message)));
+$("passwordResetForm").addEventListener("submit", (event) => resetPassword(event).catch((error) => showPublicNotice(error.message)));
+$("emailVerificationForm").addEventListener("submit", (event) => verifyEmail(event).catch((error) => showPublicNotice(error.message)));
 $("backToPublicBtn").addEventListener("click", () => logoutToPublic().catch((error) => showNotice(error.message)));
+$("verifyEmailBtn").addEventListener("click", () => requestEmailVerification().catch((error) => showNotice(error.message)));
 $("deleteAccountBtn").addEventListener("click", () => deleteAccount().catch((error) => showNotice(error.message)));
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.tab)));
 $("newCaseForm").addEventListener("submit", (event) => createCase(event).catch((error) => showNotice(error.message)));
@@ -746,6 +794,20 @@ document.querySelectorAll(".category-card").forEach((card) => {
   card.addEventListener("click", () => renderCategorySelection(card.dataset.category));
 });
 
+function hydrateAuthTokensFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const resetToken = params.get("reset_password_token");
+  const verifyToken = params.get("verify_email_token");
+  if (resetToken) {
+    $("passwordResetForm").querySelector('input[name="token"]').value = resetToken;
+    showAuthPanel();
+  }
+  if (verifyToken) {
+    $("emailVerificationForm").querySelector('input[name="token"]').value = verifyToken;
+    showAuthPanel();
+  }
+}
+
 document.addEventListener("click", (event) => {
   const target = event.target;
   if (target.matches("[data-add-gap]")) {
@@ -755,3 +817,5 @@ document.addEventListener("click", (event) => {
     deleteEvidenceFile(target.dataset.deleteFile).catch((error) => showNotice(error.message));
   }
 });
+
+hydrateAuthTokensFromUrl();

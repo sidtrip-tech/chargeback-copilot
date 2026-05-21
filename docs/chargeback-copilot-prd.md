@@ -546,12 +546,13 @@ Phases:
 Exit criteria:
 
 - Users can only access their own packets and evidence.
+- Local authentication supports email verification and password reset flows, or a hosted auth provider replaces local auth.
 - Uploaded files are validated, scanned, encrypted, and deletable.
 - Full card numbers are never collected.
 - Final export is blocked for unsupported claims or unresolved high-priority requirements.
 - Privacy, terms, consent, monitoring, backups, and incident response basics are in place.
 
-Current foundation work has begun with local session-based access, user-owned packet records, protected APIs, and audit-log storage. This is a stepping stone toward hosted auth, Postgres, secure uploads, and production deployment, not a substitute for the full production build.
+Current foundation work has begun with local session-based access, user-owned packet records, protected APIs, audit-log storage, email verification/password reset token flows, Postgres, and S3-backed uploads. This is a stepping stone toward hosted auth or configured transactional email, managed scanning, monitoring, and broader production operations, not a substitute for the full production build.
 
 ## 13. Open Questions
 

@@ -4,10 +4,11 @@ from html import escape
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from .auth import DEMO_USER_ID, hash_password, verify_password
+from .auth import DEMO_USER_ID, hash_password, new_auth_token, verify_password
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
+from .emailer import email_delivery_configured, send_password_reset_email, send_verification_email
 from .jobs import enqueue_job, list_jobs, run_once
-from .models import AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback, User
+from .models import AuthToken, AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback, User
 from .packets import generate_template_packet
 from .planning import checklist_status, find_gaps, get_plan
 from .store import (
@@ -16,6 +17,7 @@ from .store import (
     delete_evidence_file,
     delete_session,
     get_evidence_file,
+    get_auth_token,
     get_dispute,
     get_latest_packet,
     get_outcome,
@@ -30,13 +32,17 @@ from .store import (
     list_evidence_files,
     list_outcomes,
     list_packets,
+    mark_auth_token_used,
+    mark_email_verified,
     save_audit_log,
+    save_auth_token,
     save_dispute,
     save_evidence,
     save_evidence_file,
     save_outcome,
     save_packet,
     save_user,
+    update_user_password,
 )
 from .timeline import build_timeline
 from .uploads import read_evidence_file, remove_evidence_file, storage_healthcheck, store_evidence_file
@@ -83,8 +89,8 @@ def run_jobs() -> Dict[str, Any]:
     return {"completed": [asdict(job) for job in completed]}
 
 
-def _public_user(user: User) -> Dict[str, str]:
-    return {"id": user.id, "email": user.email, "name": user.name}
+def _public_user(user: User) -> Dict[str, Any]:
+    return {"id": user.id, "email": user.email, "name": user.name, "email_verified": bool(user.email_verified_at)}
 
 
 def _auth_response(user: User) -> Dict[str, Any]:
@@ -94,6 +100,22 @@ def _auth_response(user: User) -> Dict[str, Any]:
 
 def _clean_email(email: str) -> str:
     return email.strip().lower()
+
+
+def _token_expiry(hours: int) -> str:
+    return (datetime.now(timezone.utc) + timedelta(hours=hours)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _create_auth_token(user_id: str, purpose: str, hours: int) -> AuthToken:
+    auth_token = AuthToken(
+        token=new_auth_token(),
+        user_id=user_id,
+        purpose=purpose,
+        created_at=utc_now(),
+        expires_at=_token_expiry(hours),
+    )
+    save_auth_token(auth_token)
+    return auth_token
 
 
 def signup(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -117,8 +139,13 @@ def signup(payload: Dict[str, Any]) -> Dict[str, Any]:
         created_at=utc_now(),
     )
     save_user(user)
+    verification = _create_auth_token(user.id, "email_verification", 48)
+    email_sent = send_verification_email(user.email, verification.token)
     _audit(user.id, "account.created", "user", user.id, {"auth_provider": "local"})
-    return _auth_response(user)
+    payload = _auth_response(user)
+    payload["email_verification_sent"] = email_sent
+    payload["email_delivery_configured"] = email_delivery_configured()
+    return payload
 
 
 def login(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -133,6 +160,53 @@ def login(payload: Dict[str, Any]) -> Dict[str, Any]:
 def demo_login() -> Dict[str, Any]:
     user = get_user(DEMO_USER_ID)
     return _auth_response(user)
+
+
+def request_email_verification(user_id: str) -> Dict[str, Any]:
+    user = get_user(user_id)
+    if user.email_verified_at:
+        return {"ok": True, "email_verified": True, "email_sent": False}
+    token = _create_auth_token(user.id, "email_verification", 48)
+    email_sent = send_verification_email(user.email, token.token)
+    _audit(user.id, "email_verification.requested", "user", user.id, {"email_sent": str(email_sent)})
+    return {"ok": True, "email_verified": False, "email_sent": email_sent, "email_delivery_configured": email_delivery_configured()}
+
+
+def verify_email(payload: Dict[str, Any]) -> Dict[str, Any]:
+    token = payload.get("token", "").strip()
+    auth_token = get_auth_token(token, "email_verification", utc_now())
+    if not auth_token:
+        raise ValueError("Verification link is invalid or expired.")
+    verified_at = utc_now()
+    mark_email_verified(auth_token.user_id, verified_at)
+    mark_auth_token_used(token, verified_at)
+    _audit(auth_token.user_id, "email.verified", "user", auth_token.user_id, {})
+    return {"ok": True, "email_verified": True}
+
+
+def request_password_reset(payload: Dict[str, Any]) -> Dict[str, Any]:
+    email = _clean_email(payload.get("email", ""))
+    user = get_user_by_email(email)
+    if user:
+        token = _create_auth_token(user.id, "password_reset", 2)
+        email_sent = send_password_reset_email(user.email, token.token)
+        _audit(user.id, "password_reset.requested", "user", user.id, {"email_sent": str(email_sent)})
+    return {"ok": True, "message": "If an account exists for that email, reset instructions will be sent.", "email_delivery_configured": email_delivery_configured()}
+
+
+def reset_password(payload: Dict[str, Any]) -> Dict[str, Any]:
+    token = payload.get("token", "").strip()
+    password = payload.get("password", "")
+    if len(password) < 8:
+        raise ValueError("Use a password with at least 8 characters.")
+    auth_token = get_auth_token(token, "password_reset", utc_now())
+    if not auth_token:
+        raise ValueError("Reset link is invalid or expired.")
+    used_at = utc_now()
+    update_user_password(auth_token.user_id, hash_password(password))
+    mark_auth_token_used(token, used_at)
+    _audit(auth_token.user_id, "password_reset.completed", "user", auth_token.user_id, {})
+    return {"ok": True}
 
 
 def current_user(token: str) -> Dict[str, Any]:

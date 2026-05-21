@@ -188,7 +188,14 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _validate_csrf(self, path):
-        if path in {"/api/auth/demo", "/api/auth/signup", "/api/auth/login"}:
+        if path in {
+            "/api/auth/demo",
+            "/api/auth/signup",
+            "/api/auth/login",
+            "/api/auth/verify-email",
+            "/api/auth/request-password-reset",
+            "/api/auth/reset-password",
+        }:
             return
         cookie_token = self._csrf_cookie()
         header_token = self.headers.get("X-CSRF-Token", "")
@@ -291,6 +298,24 @@ class Handler(BaseHTTPRequestHandler):
                         ("Set-Cookie", self._clear_csrf_cookie_header()),
                     ],
                 )
+                return
+            if path == "/api/auth/request-email-verification":
+                self._read_json()
+                self._send_json(api.request_email_verification(self._current_user_id()))
+                return
+            if path == "/api/auth/verify-email":
+                body = self._read_json()
+                self._send_json(api.verify_email(body))
+                return
+            if path == "/api/auth/request-password-reset":
+                body = self._read_json()
+                check_rate_limit(self._client_key(), "auth")
+                self._send_json(api.request_password_reset(body))
+                return
+            if path == "/api/auth/reset-password":
+                body = self._read_json()
+                check_rate_limit(self._client_key(), "auth")
+                self._send_json(api.reset_password(body))
                 return
             if path == "/api/account/delete":
                 body = self._read_json()

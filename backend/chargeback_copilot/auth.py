@@ -41,3 +41,7 @@ def new_session_token() -> str:
 
 def new_csrf_token() -> str:
     return base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
+
+
+def new_auth_token() -> str:
+    return base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")

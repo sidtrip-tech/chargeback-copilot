@@ -108,6 +108,7 @@ The stdlib server includes a few production-foundation protections:
 - Double-submit CSRF protection for cookie-authenticated POST requests.
 - Origin allowlist checks for state-changing requests through `CORS_ALLOWED_ORIGINS`.
 - Basic auth endpoint rate limiting through `AUTH_RATE_LIMIT_ATTEMPTS` and `AUTH_RATE_LIMIT_WINDOW_SECONDS`.
+- Email verification and password reset token endpoints, with optional SMTP delivery.
 - JSON request body size limit through `MAX_JSON_BODY_BYTES`.
 - Browser security headers: `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`.
 - User data export and account deletion endpoints.
@@ -133,6 +134,22 @@ After setting these variables, redeploy and check:
 ```text
 https://your-render-service.onrender.com/api/readiness
 ```
+
+## Email Verification And Password Reset
+
+The app can create verification and password reset tokens without SMTP, but production email delivery requires SMTP settings:
+
+```text
+PUBLIC_BASE_URL=https://chargeback-copilot.onrender.com
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+SMTP_FROM_EMAIL=support@your-domain.com
+SMTP_USE_TLS=true
+```
+
+Use a transactional email provider or a verified SMTP sender. Without these values, the UI will show that email delivery is not configured.
 
 ## PDF-Ready Export
 

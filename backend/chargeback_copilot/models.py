@@ -9,6 +9,17 @@ class User:
     name: str
     password_hash: str
     created_at: str
+    email_verified_at: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class AuthToken:
+    token: str
+    user_id: str
+    purpose: str
+    created_at: str
+    expires_at: str
+    used_at: Optional[str] = None
 
 
 @dataclass(frozen=True)

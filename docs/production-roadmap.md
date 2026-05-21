@@ -131,6 +131,7 @@ Current implementation status:
 - Added the first Postgres store adapter path, selected by `DATABASE_URL=postgresql://...`, while preserving the SQLite demo path.
 - Added `/api/readiness` for manual database and evidence-storage checks after production env changes.
 - Added local email/password account creation and sign-in with per-user sessions. Demo login remains available for controlled demos.
+- Added email verification and password reset token flows with optional SMTP delivery.
 - Updated Render Blueprint for managed Postgres using Render's `fromDatabase` connection string reference.
 - Added first-pass production hardening: secure production cookie flag, CSRF protection, origin allowlist checks, request body limit, basic auth rate limiting, and browser security headers.
 - Added user data export and account deletion controls as a privacy/compliance foundation.
@@ -139,7 +140,7 @@ Current implementation status:
 - Added upload scan-status enforcement with a basic scanner mode; managed malware scanning is still required before real sensitive uploads at scale.
 - Improved export as PDF-ready HTML with print styling and uploaded-file index. Native server-side PDF generation remains a future background job.
 - Added a background job table, job status API, upload processing enqueue path, and one-shot worker script.
-- Remaining Phase 1 work: hosted authentication or email verification/password reset, staging Postgres integration testing after deploy, and production environment setup.
+- Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export
 

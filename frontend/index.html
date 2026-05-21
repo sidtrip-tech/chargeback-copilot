@@ -110,6 +110,22 @@
               <button type="submit">Sign in</button>
               <button id="demoLoginBtn" class="subtle-button" type="button">Use demo account</button>
             </form>
+            <form id="passwordResetRequestForm" class="auth-card stack-form">
+              <h3>Reset password</h3>
+              <label>Email<input name="email" required type="email" autocomplete="email" placeholder="jane@example.com" /></label>
+              <button type="submit">Send reset link</button>
+            </form>
+            <form id="passwordResetForm" class="auth-card stack-form">
+              <h3>Use reset token</h3>
+              <label>Reset token<input name="token" required autocomplete="one-time-code" /></label>
+              <label>New password<input name="password" required type="password" minlength="8" autocomplete="new-password" /></label>
+              <button type="submit">Update password</button>
+            </form>
+            <form id="emailVerificationForm" class="auth-card stack-form">
+              <h3>Verify email</h3>
+              <label>Verification token<input name="token" required autocomplete="one-time-code" /></label>
+              <button type="submit">Verify email</button>
+            </form>
           </div>
         </section>
       </main>
@@ -131,10 +147,11 @@
         </nav>
         <div class="account-actions">
           <a id="exportDataBtn" class="subtle-button" href="/api/account/export" target="_blank" rel="noreferrer">Export my data</a>
+          <button id="verifyEmailBtn" class="subtle-button" type="button">Verify email</button>
           <button id="deleteAccountBtn" class="subtle-button danger-action" type="button">Delete account</button>
         </div>
         <button id="backToPublicBtn" class="subtle-button">Sign out</button>
-        <p class="demo-note">Account sessions are active. Hosted auth and email verification come next.</p>
+        <p id="accountStatus" class="demo-note">Account session active.</p>
       </aside>
 
       <main class="workspace">

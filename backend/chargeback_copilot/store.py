@@ -16,6 +16,7 @@ except ImportError:
 
 from .auth import DEMO_EMAIL, DEMO_NAME, DEMO_USER_ID, hash_password, new_session_token
 from .models import (
+    AuthToken,
     AuditLog,
     BackgroundJob,
     CitedClaim,
@@ -135,9 +136,17 @@ def init_db(db_path: Path = DB_PATH) -> None:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS auth_tokens (
+                token TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                purpose TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                used_at TEXT
+            );
             """
         )
-        _ensure_owner_columns(conn)
+        _ensure_sqlite_schema(conn)
         _ensure_demo_user(conn)
         if conn.execute("SELECT COUNT(*) FROM disputes").fetchone()[0] == 0:
             for dispute in DISPUTES:
@@ -200,16 +209,26 @@ def _ensure_owner_columns(conn: sqlite3.Connection) -> None:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN owner_id TEXT")
 
 
+def _ensure_sqlite_schema(conn: sqlite3.Connection) -> None:
+    _ensure_owner_columns(conn)
+    if "email_verified_at" not in _columns(conn, "users"):
+        conn.execute("ALTER TABLE users ADD COLUMN email_verified_at TEXT")
+
+
 def _ensure_demo_user(conn: sqlite3.Connection) -> None:
     if conn.execute("SELECT 1 FROM users WHERE id = ?", (DEMO_USER_ID,)).fetchone():
         return
     conn.execute(
-        "INSERT INTO users VALUES (?, ?, ?, ?, ?)",
+        """
+        INSERT INTO users (id, email, name, password_hash, created_at, email_verified_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
         (
             DEMO_USER_ID,
             DEMO_EMAIL,
             DEMO_NAME,
             hash_password("demo-password"),
+            "2026-05-20T12:00:00Z",
             "2026-05-20T12:00:00Z",
         ),
     )
@@ -244,6 +263,10 @@ def _load_evidence_file(payload: Any) -> EvidenceFile:
     return EvidenceFile(**_load_payload(payload))
 
 
+def _load_auth_token(payload: Any) -> AuthToken:
+    return AuthToken(**_load_payload(payload))
+
+
 def _load_background_job(payload: Any) -> BackgroundJob:
     return BackgroundJob(**_load_payload(payload))
 
@@ -268,6 +291,22 @@ def _ensure_demo_user_postgres(conn) -> None:
             "2026-05-20T12:00:00Z",
             "2026-05-20T12:00:00Z",
         ),
+    )
+
+
+def _user_from_row(row) -> User:
+    created_at = row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"]
+    verified_at = None
+    if "email_verified_at" in row.keys():
+        value = row["email_verified_at"]
+        verified_at = value.isoformat() if hasattr(value, "isoformat") else value
+    return User(
+        id=row["id"],
+        email=row["email"],
+        name=row["name"],
+        password_hash=row["password_hash"] or "",
+        created_at=created_at,
+        email_verified_at=verified_at,
     )
 
 
@@ -352,13 +391,7 @@ def get_user(user_id: str) -> User:
             row = conn.execute("SELECT * FROM users WHERE id = %s", (user_id,)).fetchone()
             if not row:
                 raise KeyError(user_id)
-            return User(
-                id=row["id"],
-                email=row["email"],
-                name=row["name"],
-                password_hash=row["password_hash"] or "",
-                created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
-            )
+            return _user_from_row(row)
         finally:
             conn.close()
     conn = connect()
@@ -366,13 +399,7 @@ def get_user(user_id: str) -> User:
         row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         if not row:
             raise KeyError(user_id)
-        return User(
-            id=row["id"],
-            email=row["email"],
-            name=row["name"],
-            password_hash=row["password_hash"],
-            created_at=row["created_at"],
-        )
+        return _user_from_row(row)
     finally:
         conn.close()
 
@@ -384,13 +411,7 @@ def get_user_by_email(email: str) -> Optional[User]:
             row = conn.execute("SELECT * FROM users WHERE lower(email) = lower(%s)", (email,)).fetchone()
             if not row:
                 return None
-            return User(
-                id=row["id"],
-                email=row["email"],
-                name=row["name"],
-                password_hash=row["password_hash"] or "",
-                created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
-            )
+            return _user_from_row(row)
         finally:
             conn.close()
     conn = connect()
@@ -398,13 +419,7 @@ def get_user_by_email(email: str) -> Optional[User]:
         row = conn.execute("SELECT * FROM users WHERE lower(email) = lower(?)", (email,)).fetchone()
         if not row:
             return None
-        return User(
-            id=row["id"],
-            email=row["email"],
-            name=row["name"],
-            password_hash=row["password_hash"],
-            created_at=row["created_at"],
-        )
+        return _user_from_row(row)
     finally:
         conn.close()
 
@@ -415,15 +430,16 @@ def save_user(user: User) -> None:
         try:
             conn.execute(
                 """
-                INSERT INTO users (id, email, name, password_hash, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO users (id, email, name, password_hash, created_at, updated_at, email_verified_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (id) DO UPDATE SET
                     email = EXCLUDED.email,
                     name = EXCLUDED.name,
                     password_hash = EXCLUDED.password_hash,
+                    email_verified_at = EXCLUDED.email_verified_at,
                     updated_at = now()
                 """,
-                (user.id, user.email, user.name, user.password_hash, user.created_at, user.created_at),
+                (user.id, user.email, user.name, user.password_hash, user.created_at, user.created_at, user.email_verified_at),
             )
             conn.commit()
         finally:
@@ -433,10 +449,10 @@ def save_user(user: User) -> None:
     try:
         conn.execute(
             """
-            INSERT OR REPLACE INTO users (id, email, name, password_hash, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO users (id, email, name, password_hash, created_at, email_verified_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (user.id, user.email, user.name, user.password_hash, user.created_at),
+            (user.id, user.email, user.name, user.password_hash, user.created_at, user.email_verified_at),
         )
         conn.commit()
     finally:
@@ -482,13 +498,7 @@ def get_session_user(token: str, now: str) -> Optional[User]:
             ).fetchone()
             if not row:
                 return None
-            return User(
-                id=row["id"],
-                email=row["email"],
-                name=row["name"],
-                password_hash=row["password_hash"] or "",
-                created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
-            )
+            return _user_from_row(row)
         finally:
             conn.close()
     conn = connect()
@@ -504,13 +514,7 @@ def get_session_user(token: str, now: str) -> Optional[User]:
         ).fetchone()
         if not row:
             return None
-        return User(
-            id=row["id"],
-            email=row["email"],
-            name=row["name"],
-            password_hash=row["password_hash"],
-            created_at=row["created_at"],
-        )
+        return _user_from_row(row)
     finally:
         conn.close()
 
@@ -551,6 +555,128 @@ def list_disputes(owner_id: str = DEMO_USER_ID) -> List[ConsumerDispute]:
             _load_dataclass(ConsumerDispute, row["payload"])
             for row in conn.execute("SELECT payload FROM disputes WHERE owner_id = ? ORDER BY id", (owner_id,)).fetchall()
         ]
+    finally:
+        conn.close()
+
+
+def save_auth_token(auth_token: AuthToken) -> None:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            conn.execute(
+                """
+                INSERT INTO auth_tokens (token, user_id, purpose, created_at, expires_at, used_at)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (token) DO UPDATE SET used_at = EXCLUDED.used_at
+                """,
+                (
+                    auth_token.token,
+                    auth_token.user_id,
+                    auth_token.purpose,
+                    auth_token.created_at,
+                    auth_token.expires_at,
+                    auth_token.used_at,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return
+    conn = connect()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO auth_tokens (token, user_id, purpose, created_at, expires_at, used_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (auth_token.token, auth_token.user_id, auth_token.purpose, auth_token.created_at, auth_token.expires_at, auth_token.used_at),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_auth_token(token: str, purpose: str, now: str) -> Optional[AuthToken]:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            row = conn.execute(
+                """
+                SELECT * FROM auth_tokens
+                WHERE token = %s AND purpose = %s AND used_at IS NULL AND expires_at > %s
+                """,
+                (token, purpose, now),
+            ).fetchone()
+            if not row:
+                return None
+            return AuthToken(
+                token=row["token"],
+                user_id=row["user_id"],
+                purpose=row["purpose"],
+                created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
+                expires_at=row["expires_at"].isoformat() if hasattr(row["expires_at"], "isoformat") else row["expires_at"],
+                used_at=row["used_at"].isoformat() if hasattr(row["used_at"], "isoformat") else row["used_at"],
+            )
+        finally:
+            conn.close()
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT * FROM auth_tokens WHERE token = ? AND purpose = ? AND used_at IS NULL AND expires_at > ?",
+            (token, purpose, now),
+        ).fetchone()
+        return AuthToken(**dict(row)) if row else None
+    finally:
+        conn.close()
+
+
+def mark_auth_token_used(token: str, used_at: str) -> None:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            conn.execute("UPDATE auth_tokens SET used_at = %s WHERE token = %s", (used_at, token))
+            conn.commit()
+        finally:
+            conn.close()
+        return
+    conn = connect()
+    try:
+        conn.execute("UPDATE auth_tokens SET used_at = ? WHERE token = ?", (used_at, token))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_user_password(user_id: str, password_hash: str) -> None:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            conn.execute("UPDATE users SET password_hash = %s, updated_at = now() WHERE id = %s", (password_hash, user_id))
+            conn.commit()
+        finally:
+            conn.close()
+        return
+    conn = connect()
+    try:
+        conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (password_hash, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def mark_email_verified(user_id: str, verified_at: str) -> None:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            conn.execute(
+                "UPDATE users SET email_verified_at = %s, updated_at = now() WHERE id = %s",
+                (verified_at, user_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return
+    conn = connect()
+    try:
+        conn.execute("UPDATE users SET email_verified_at = ? WHERE id = ?", (verified_at, user_id))
+        conn.commit()
     finally:
         conn.close()
 
@@ -1257,8 +1383,8 @@ def delete_account(user_id: str) -> None:
         return
     conn = connect()
     try:
-        for table in ("sessions", "outcomes", "packets", "evidence_files", "evidence", "disputes", "audit_logs"):
-            key = "user_id" if table in {"sessions", "audit_logs"} else "owner_id"
+        for table in ("sessions", "auth_tokens", "outcomes", "packets", "evidence_files", "evidence", "disputes", "audit_logs"):
+            key = "user_id" if table in {"sessions", "auth_tokens", "audit_logs"} else "owner_id"
             conn.execute(f"DELETE FROM {table} WHERE {key} = ?", (user_id,))
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()

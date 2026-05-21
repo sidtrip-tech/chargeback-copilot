@@ -129,6 +129,7 @@ Current implementation status:
 - Added first-deploy scaffolding: Dockerfile, Render Blueprint config, `/api/health`, persistent demo SQLite path support, deployment guide, and GitHub Actions CI.
 - Added the initial production Postgres schema at `db/migrations/001_initial_postgres_schema.sql`.
 - Added the first Postgres store adapter path, selected by `DATABASE_URL=postgresql://...`, while preserving the SQLite demo path.
+- Added `/api/readiness` for manual database and evidence-storage checks after production env changes.
 - Added local email/password account creation and sign-in with per-user sessions. Demo login remains available for controlled demos.
 - Updated Render Blueprint for managed Postgres using Render's `fromDatabase` connection string reference.
 - Added first-pass production hardening: secure production cookie flag, CSRF protection, origin allowlist checks, request body limit, basic auth rate limiting, and browser security headers.

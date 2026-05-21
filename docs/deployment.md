@@ -16,6 +16,7 @@ This is deployment-ready for a controlled production-style demo. The next produc
    - Postgres database `chargeback-copilot-db`
 5. Deploy the Blueprint.
 6. Open the public URL and check `/api/health`.
+7. For a deeper production check, open `/api/readiness` after database and storage env vars are set.
 
 Expected health response:
 
@@ -26,6 +27,22 @@ Expected health response:
   "timestamp": "..."
 }
 ```
+
+Expected readiness response:
+
+```json
+{
+  "ok": true,
+  "service": "chargeback-copilot",
+  "timestamp": "...",
+  "checks": {
+    "database": { "ok": true, "backend": "postgres" },
+    "storage": { "ok": true, "backend": "s3", "bucket": "your-private-bucket" }
+  }
+}
+```
+
+`/api/readiness` writes, reads, and deletes a tiny storage healthcheck object. Use it manually after changing storage settings; keep `/api/health` as the platform health check.
 
 ## Manual Docker Run
 
@@ -110,6 +127,12 @@ OBJECT_STORAGE_SECRET_ACCESS_KEY=...
 ```
 
 For S3-compatible providers outside AWS, set `OBJECT_STORAGE_ENDPOINT` to the provider endpoint. Uploaded objects are written with generated keys and server-side encryption enabled. File downloads are proxied through authenticated app routes so the storage bucket can stay private.
+
+After setting these variables, redeploy and check:
+
+```text
+https://your-render-service.onrender.com/api/readiness
+```
 
 ## PDF-Ready Export
 

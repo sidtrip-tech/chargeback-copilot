@@ -201,6 +201,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/health":
                 self._send_json(api.health())
                 return
+            if path == "/api/readiness":
+                self._send_json(api.readiness())
+                return
             if path == "/api/jobs/run":
                 self._send_json(api.run_jobs())
                 return

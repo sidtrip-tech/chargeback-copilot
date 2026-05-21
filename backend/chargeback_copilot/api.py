@@ -22,6 +22,7 @@ from .store import (
     get_session_user,
     get_user,
     get_user_by_email,
+    database_health,
     init_db,
     list_audit_logs,
     list_disputes,
@@ -38,7 +39,7 @@ from .store import (
     save_user,
 )
 from .timeline import build_timeline
-from .uploads import read_evidence_file, remove_evidence_file, store_evidence_file
+from .uploads import read_evidence_file, remove_evidence_file, storage_healthcheck, store_evidence_file
 from .validation import export_readiness
 
 
@@ -60,6 +61,20 @@ def health() -> Dict[str, Any]:
         "ok": True,
         "service": "chargeback-copilot",
         "timestamp": utc_now(),
+    }
+
+
+def readiness() -> Dict[str, Any]:
+    init_db()
+    checks = {
+        "database": database_health(),
+        "storage": storage_healthcheck(),
+    }
+    return {
+        "ok": all(item["ok"] for item in checks.values()),
+        "service": "chargeback-copilot",
+        "timestamp": utc_now(),
+        "checks": checks,
     }
 
 

@@ -156,6 +156,22 @@ def init_db(db_path: Path = DB_PATH) -> None:
         conn.close()
 
 
+def database_health() -> dict[str, object]:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            conn.execute("SELECT 1").fetchone()
+            return {"ok": True, "backend": "postgres"}
+        finally:
+            conn.close()
+    conn = connect()
+    try:
+        conn.execute("SELECT 1").fetchone()
+        return {"ok": True, "backend": "sqlite"}
+    finally:
+        conn.close()
+
+
 def init_postgres_db() -> None:
     conn = connect_postgres()
     try:

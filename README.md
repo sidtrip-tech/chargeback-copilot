@@ -75,6 +75,7 @@ The app now includes the first production-foundation slice:
 - Configurable local server host and port through `HOST` and `PORT`.
 - Initial production Postgres schema in `db/migrations/001_initial_postgres_schema.sql`.
 - Postgres store adapter path selected by `DATABASE_URL=postgresql://...`.
+- Readiness check for database and evidence storage at `/api/readiness`.
 - First-pass CSRF protection, origin checks, auth rate limiting, request body limits, and browser security headers.
 - User data export and account deletion controls.
 - Evidence file upload with type/size checks, file metadata, download, and delete controls.

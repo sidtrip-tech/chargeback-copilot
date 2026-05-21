@@ -152,3 +152,17 @@ def read_evidence_file(file: EvidenceFile) -> bytes:
 
 def remove_evidence_file(file: EvidenceFile) -> None:
     storage_adapter().delete(key=file.storage_key)
+
+
+def storage_healthcheck() -> dict[str, object]:
+    adapter = storage_adapter()
+    key = f"healthchecks/{uuid4().hex}.txt"
+    expected = b"chargeback-copilot-storage-check"
+    adapter.put(key=key, data=expected, content_type="text/plain")
+    try:
+        actual = adapter.get(key=key)
+        if actual != expected:
+            raise RuntimeError("Storage healthcheck read did not match written content.")
+        return {"ok": True, "backend": OBJECT_STORAGE_BACKEND, "bucket": OBJECT_STORAGE_BUCKET}
+    finally:
+        adapter.delete(key=key)

@@ -179,6 +179,12 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(payload["service"], "chargeback-copilot")
         self.assertIn("timestamp", payload)
 
+    def test_readiness_checks_database_and_storage(self):
+        payload = api.readiness()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["checks"]["database"]["backend"], "sqlite")
+        self.assertEqual(payload["checks"]["storage"]["backend"], "local")
+
     def test_disputes_are_scoped_by_owner(self):
         init_db()
         other_dispute = ConsumerDispute(

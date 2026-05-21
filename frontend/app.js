@@ -89,18 +89,21 @@ async function demoLogin() {
 
 async function signup(event) {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  const formEl = event.currentTarget;
+  const form = new FormData(formEl);
   const body = Object.fromEntries(form.entries());
   const data = await request("/api/auth/signup", { method: "POST", body: JSON.stringify(body) });
-  event.currentTarget.reset();
+  formEl.reset();
   await enterPrivate(data);
 }
 
 async function signin(event) {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  const formEl = event.currentTarget;
+  const form = new FormData(formEl);
   const body = Object.fromEntries(form.entries());
   const data = await request("/api/auth/login", { method: "POST", body: JSON.stringify(body) });
+  formEl.reset();
   await enterPrivate(data);
 }
 

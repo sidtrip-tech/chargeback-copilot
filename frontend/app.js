@@ -1,5 +1,6 @@
 const state = {
   authenticated: false,
+  user: null,
   tab: "in_progress",
   disputes: [],
   summary: null,
@@ -23,6 +24,7 @@ function showNotice(message) {
 async function request(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     ...options,
   });
   const payload = await response.json();
@@ -30,15 +32,19 @@ async function request(path, options = {}) {
   return payload;
 }
 
-function login() {
+async function login() {
+  const data = await request("/api/auth/demo", { method: "POST", body: "{}" });
   state.authenticated = true;
+  state.user = data.user;
   $("publicPage").classList.add("hidden");
   $("privateApp").classList.remove("hidden");
   loadDisputes().catch((error) => showNotice(error.message));
 }
 
-function logoutToPublic() {
+async function logoutToPublic() {
+  await request("/api/auth/logout", { method: "POST", body: "{}" }).catch(() => null);
   state.authenticated = false;
+  state.user = null;
   $("privateApp").classList.add("hidden");
   $("publicPage").classList.remove("hidden");
 }
@@ -554,8 +560,10 @@ async function saveOutcome(event) {
   await loadDisputes();
 }
 
-document.querySelectorAll(".loginCta").forEach((button) => button.addEventListener("click", login));
-$("backToPublicBtn").addEventListener("click", logoutToPublic);
+document.querySelectorAll(".loginCta").forEach((button) => {
+  button.addEventListener("click", () => login().catch((error) => showNotice(error.message)));
+});
+$("backToPublicBtn").addEventListener("click", () => logoutToPublic().catch((error) => showNotice(error.message)));
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.tab)));
 $("newCaseForm").addEventListener("submit", (event) => createCase(event).catch((error) => showNotice(error.message)));
 $("evidenceForm").addEventListener("submit", (event) => addEvidence(event).catch((error) => showNotice(error.message)));

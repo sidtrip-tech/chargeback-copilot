@@ -110,6 +110,19 @@ The MVP focuses on helping a consumer prepare a bank-ready dispute packet. It do
 - Multi-user household workflows
 - Paid subscription management automation
 
+### Path To Production
+
+The MVP should remain focused on workflow validation, but production readiness requires a separate implementation track:
+
+- Real authentication and user-owned packet boundaries.
+- Managed Postgres with schema migrations.
+- Secure object storage for uploaded evidence files.
+- Background processing for file scanning, OCR, PDF export, and optional AI work.
+- Stronger citation validation before export.
+- Privacy, terms, consent, audit logs, data deletion/export support, and operational monitoring.
+
+The detailed phased plan is maintained in [Production Roadmap](production-roadmap.md).
+
 ## 6. Core User Flow
 
 ### 0. Learn On Public Page
@@ -517,6 +530,27 @@ Exit criteria:
 - No material safety issues around false or unsupported claims.
 - Users understand that outcome feedback is tracking only, not advice or prediction.
 
+### Production Build
+
+After the public MVP validates the core workflow, the product should move through a production build before handling real sensitive user evidence at scale.
+
+Phases:
+
+- Production Foundation: real backend framework, Postgres, migrations, authentication, session security, and user-owned packets.
+- Evidence And Export: secure uploads, object storage, virus scanning, previews, delete controls, OCR where useful, and PDF export.
+- AI-Assisted Preparation: optional citation-validated AI drafting, OCR/summarization, safety refusals, and deterministic template fallback.
+- Compliance And Launch Readiness: privacy/security review, audit logs, user data export/deletion support, analytics, monitoring, backups, support flows, staging, and production deployment.
+
+Exit criteria:
+
+- Users can only access their own packets and evidence.
+- Uploaded files are validated, scanned, encrypted, and deletable.
+- Full card numbers are never collected.
+- Final export is blocked for unsupported claims or unresolved high-priority requirements.
+- Privacy, terms, consent, monitoring, backups, and incident response basics are in place.
+
+Current foundation work has begun with local session-based access, user-owned packet records, protected APIs, and audit-log storage. This is a stepping stone toward hosted auth, Postgres, secure uploads, and production deployment, not a substitute for the full production build.
+
 ## 13. Open Questions
 
 - Should the product require users to confirm they are submitting truthful information before export?
@@ -549,3 +583,5 @@ Exit criteria:
 - Dashboard number cards are contextual by tab and do not show the same global metrics across all statuses.
 - Outcome feedback is absent from In Progress and available only for Completed packets.
 - Outcome feedback is never represented as prediction, guarantee, legal advice, financial advice, or issuer guidance.
+- Production roadmap exists and describes authentication, user data boundaries, Postgres, secure evidence uploads, object storage, background jobs, PDF export, compliance, monitoring, deployment, and test strategy.
+- Production build remains preparation/export only and does not introduce direct bank submission.

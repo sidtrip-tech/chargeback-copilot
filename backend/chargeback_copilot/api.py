@@ -1,20 +1,27 @@
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html import escape
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
+from .auth import DEMO_USER_ID
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
-from .models import ConsumerDispute, EvidenceArtifact, OutcomeFeedback
+from .models import AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback
 from .packets import generate_template_packet
 from .planning import checklist_status, find_gaps, get_plan
 from .store import (
+    create_session,
+    delete_session,
     get_dispute,
     get_latest_packet,
     get_outcome,
+    get_session_user,
+    get_user,
     init_db,
+    list_audit_logs,
     list_disputes,
     list_evidence,
+    save_audit_log,
     save_dispute,
     save_evidence,
     save_outcome,
@@ -28,11 +35,60 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
+def _session_expiry() -> str:
+    return (datetime.now(timezone.utc) + timedelta(days=14)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
 def boot() -> None:
     init_db()
 
 
-def list_cases() -> Dict[str, Any]:
+def health() -> Dict[str, Any]:
+    init_db()
+    return {
+        "ok": True,
+        "service": "chargeback-copilot",
+        "timestamp": utc_now(),
+    }
+
+
+def demo_login() -> Dict[str, Any]:
+    user = get_user(DEMO_USER_ID)
+    token = create_session(user.id, utc_now(), _session_expiry())
+    return {
+        "token": token,
+        "user": {"id": user.id, "email": user.email, "name": user.name},
+    }
+
+
+def current_user(token: str) -> Dict[str, Any]:
+    user = get_session_user(token, utc_now())
+    if not user:
+        raise PermissionError("Sign in to continue.")
+    return {"id": user.id, "email": user.email, "name": user.name}
+
+
+def logout(token: str) -> Dict[str, Any]:
+    if token:
+        delete_session(token)
+    return {"ok": True}
+
+
+def _audit(user_id: str, action: str, entity_type: str, entity_id: str, metadata: Optional[Dict[str, str]] = None) -> None:
+    save_audit_log(
+        AuditLog(
+            id=f"audit_{uuid4().hex[:12]}",
+            user_id=user_id,
+            action=action,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            created_at=utc_now(),
+            metadata=metadata or {},
+        )
+    )
+
+
+def list_cases(user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
     disputes = []
     summary = {
         "total": 0,
@@ -42,8 +98,8 @@ def list_cases() -> Dict[str, Any]:
         "reported_success": 0,
         "reported_failure": 0,
     }
-    for dispute in list_disputes():
-        details = detail(dispute.id)
+    for dispute in list_disputes(user_id):
+        details = detail(dispute.id, user_id)
         summary["total"] += 1
         summary[details["derived_status"]] += 1
         if any(gap["severity"] == "high" for gap in details["evidence_gaps"]):
@@ -67,14 +123,14 @@ def list_cases() -> Dict[str, Any]:
     return {"disputes": disputes, "summary": summary}
 
 
-def detail(dispute_id: str) -> Dict[str, Any]:
-    dispute = get_dispute(dispute_id)
-    artifacts = list_evidence(dispute_id)
+def detail(dispute_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    dispute = get_dispute(dispute_id, user_id)
+    artifacts = list_evidence(dispute_id, user_id)
     plan = get_plan(dispute.category)
     checklist = checklist_status(plan, artifacts)
     gaps = find_gaps(plan, artifacts)
-    packet = get_latest_packet(dispute_id)
-    outcome = get_outcome(dispute_id)
+    packet = get_latest_packet(dispute_id, user_id)
+    outcome = get_outcome(dispute_id, user_id)
     status = derived_status(packet, gaps)
     satisfied, required = evidence_progress(checklist)
     ready, reason = export_readiness(
@@ -105,7 +161,7 @@ def detail(dispute_id: str) -> Dict[str, Any]:
     }
 
 
-def create_dispute(payload: Dict[str, Any]) -> Dict[str, Any]:
+def create_dispute(payload: Dict[str, Any], user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
     dispute = ConsumerDispute(
         id=f"case_{uuid4().hex[:10]}",
         merchant_name=payload["merchant_name"].strip(),
@@ -118,12 +174,13 @@ def create_dispute(payload: Dict[str, Any]) -> Dict[str, Any]:
         user_summary=payload.get("user_summary", "").strip(),
         created_at=utc_now(),
     )
-    save_dispute(dispute)
-    return detail(dispute.id)
+    save_dispute(dispute, user_id)
+    _audit(user_id, "dispute.created", "dispute", dispute.id, {"category": dispute.category})
+    return detail(dispute.id, user_id)
 
 
-def add_evidence(dispute_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    get_dispute(dispute_id)
+def add_evidence(dispute_id: str, payload: Dict[str, Any], user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    get_dispute(dispute_id, user_id)
     evidence = EvidenceArtifact(
         id=f"ev_{uuid4().hex[:10]}",
         dispute_id=dispute_id,
@@ -134,20 +191,22 @@ def add_evidence(dispute_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         summary=payload["summary"].strip(),
         relevance=payload.get("relevance", "relevant"),
     )
-    save_evidence(evidence)
-    return detail(dispute_id)
+    save_evidence(evidence, user_id)
+    _audit(user_id, "evidence.created", "evidence", evidence.id, {"dispute_id": dispute_id, "type": evidence.type})
+    return detail(dispute_id, user_id)
 
 
-def generate_packet(dispute_id: str) -> Dict[str, Any]:
-    dispute = get_dispute(dispute_id)
-    artifacts = list_evidence(dispute_id)
+def generate_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    dispute = get_dispute(dispute_id, user_id)
+    artifacts = list_evidence(dispute_id, user_id)
     packet = generate_template_packet(dispute, artifacts)
-    save_packet(packet)
-    return detail(dispute_id)
+    save_packet(packet, user_id)
+    _audit(user_id, "packet.generated", "packet", packet.id, {"dispute_id": dispute_id, "mode": packet.mode})
+    return detail(dispute_id, user_id)
 
 
-def save_outcome_feedback(dispute_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    current = detail(dispute_id)
+def save_outcome_feedback(dispute_id: str, payload: Dict[str, Any], user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    current = detail(dispute_id, user_id)
     if current["derived_status"] != "completed":
         raise ValueError("Outcome feedback is available only for completed packets.")
     outcome = payload.get("outcome")
@@ -159,18 +218,21 @@ def save_outcome_feedback(dispute_id: str, payload: Dict[str, Any]) -> Dict[str,
             outcome=outcome,
             note=payload.get("note", "").strip(),
             updated_at=utc_now(),
-        )
+        ),
+        user_id,
     )
-    return detail(dispute_id)
+    _audit(user_id, "outcome.updated", "outcome", dispute_id, {"outcome": outcome})
+    return detail(dispute_id, user_id)
 
 
-def export_packet(dispute_id: str) -> str:
-    data = detail(dispute_id)
+def export_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> str:
+    data = detail(dispute_id, user_id)
     packet = data["packet"]
     if not packet:
         raise ValueError("Generate a dispute packet before export.")
     if not data["export_ready"]:
         raise ValueError(data["export_reason"])
+    _audit(user_id, "packet.exported", "dispute", dispute_id, {"format": "html"})
 
     dispute = data["dispute"]
     claims = "\n".join(
@@ -220,3 +282,7 @@ def export_packet(dispute_id: str) -> str:
   <p><small>{escape(packet['disclaimer'])}</small></p>
 </body>
 </html>"""
+
+
+def audit_log(user_id: str) -> Dict[str, Any]:
+    return {"audit_logs": [asdict(entry) for entry in list_audit_logs(user_id)]}

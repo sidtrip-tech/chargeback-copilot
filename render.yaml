@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: chargeback-copilot
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    disk:
+      name: chargeback-copilot-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8010
+      - key: DATABASE_URL
+        value: sqlite:////var/data/chargeback_copilot.db
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: SESSION_COOKIE_NAME
+        value: chargeback_copilot_session

@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "python3 backend/server.py",
-    "test": "python3 -m unittest discover backend/tests"
+    "start": "python3 backend/server.py",
+    "test": "python3 -m unittest discover backend/tests",
+    "check": "python3 -m unittest discover backend/tests && node --check frontend/app.js"
   }
 }
-

@@ -3,6 +3,15 @@ from typing import Dict, List, Optional
 
 
 @dataclass(frozen=True)
+class User:
+    id: str
+    email: str
+    name: str
+    password_hash: str
+    created_at: str
+
+
+@dataclass(frozen=True)
 class ConsumerDispute:
     id: str
     merchant_name: str
@@ -99,3 +108,14 @@ class OutcomeFeedback:
     outcome: str
     note: str
     updated_at: str
+
+
+@dataclass(frozen=True)
+class AuditLog:
+    id: str
+    user_id: str
+    action: str
+    entity_type: str
+    entity_id: str
+    created_at: str
+    metadata: Dict[str, str] = field(default_factory=dict)

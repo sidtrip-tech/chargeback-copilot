@@ -7,12 +7,14 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from chargeback_copilot.models import CitedClaim
+from chargeback_copilot import api
+from chargeback_copilot.auth import DEMO_USER_ID
 from chargeback_copilot.dashboard import derived_status, evidence_progress, readiness_score
 from chargeback_copilot.packets import generate_template_packet
 from chargeback_copilot.planning import checklist_status, find_gaps, get_plan
 from chargeback_copilot.seed_data import DISPUTES, EVIDENCE
-from chargeback_copilot.store import get_outcome, init_db, save_outcome
-from chargeback_copilot.models import OutcomeFeedback
+from chargeback_copilot.store import get_outcome, init_db, list_disputes, save_dispute, save_outcome
+from chargeback_copilot.models import ConsumerDispute, OutcomeFeedback
 from chargeback_copilot.timeline import build_timeline
 from chargeback_copilot.validation import export_readiness, validate_claims
 
@@ -102,6 +104,42 @@ class ChargebackCopilotTests(unittest.TestCase):
         stored = get_outcome("case_sub_001")
         self.assertEqual(stored.outcome, "success")
         self.assertEqual(stored.note, "Issuer credited the account.")
+
+    def test_demo_login_creates_valid_session(self):
+        init_db()
+        login = api.demo_login()
+        current = api.current_user(login["token"])
+        self.assertEqual(current["id"], DEMO_USER_ID)
+        self.assertEqual(current["email"], "demo@chargebackcopilot.local")
+
+    def test_health_check(self):
+        payload = api.health()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["service"], "chargeback-copilot")
+        self.assertIn("timestamp", payload)
+
+    def test_disputes_are_scoped_by_owner(self):
+        init_db()
+        other_dispute = ConsumerDispute(
+            id="case_other_owner",
+            merchant_name="Other Merchant",
+            amount=1000,
+            currency="USD",
+            charge_date="2026-05-20",
+            issuer_name="Other Bank",
+            category="not_received",
+            status="draft",
+            user_summary="Different owner case.",
+            created_at="2026-05-20T13:00:00Z",
+        )
+        save_dispute(other_dispute, owner_id="user_other")
+
+        demo_ids = {item.id for item in list_disputes(DEMO_USER_ID)}
+        other_ids = {item.id for item in list_disputes("user_other")}
+        self.assertNotIn(other_dispute.id, demo_ids)
+        self.assertIn(other_dispute.id, other_ids)
+        with self.assertRaises(KeyError):
+            api.detail(other_dispute.id, DEMO_USER_ID)
 
 
 if __name__ == "__main__":

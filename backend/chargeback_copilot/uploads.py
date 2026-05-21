@@ -27,6 +27,8 @@ OBJECT_STORAGE_BACKEND = os.environ.get("OBJECT_STORAGE_BACKEND", "local")
 OBJECT_STORAGE_BUCKET = os.environ.get("OBJECT_STORAGE_BUCKET", "local-evidence")
 OBJECT_STORAGE_REGION = os.environ.get("OBJECT_STORAGE_REGION", "")
 OBJECT_STORAGE_ENDPOINT = os.environ.get("OBJECT_STORAGE_ENDPOINT", "")
+OBJECT_STORAGE_ACCESS_KEY_ID = os.environ.get("OBJECT_STORAGE_ACCESS_KEY_ID", "")
+OBJECT_STORAGE_SECRET_ACCESS_KEY = os.environ.get("OBJECT_STORAGE_SECRET_ACCESS_KEY", "")
 
 
 class EvidenceStorage(Protocol):
@@ -72,6 +74,9 @@ class S3EvidenceStorage:
             kwargs["region_name"] = OBJECT_STORAGE_REGION
         if OBJECT_STORAGE_ENDPOINT:
             kwargs["endpoint_url"] = OBJECT_STORAGE_ENDPOINT
+        if OBJECT_STORAGE_ACCESS_KEY_ID and OBJECT_STORAGE_SECRET_ACCESS_KEY:
+            kwargs["aws_access_key_id"] = OBJECT_STORAGE_ACCESS_KEY_ID
+            kwargs["aws_secret_access_key"] = OBJECT_STORAGE_SECRET_ACCESS_KEY
         self.client = boto3.client("s3", **kwargs)
 
     def put(self, *, key: str, data: bytes, content_type: str) -> None:

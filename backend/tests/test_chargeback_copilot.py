@@ -298,6 +298,38 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(clean_filename("../bad name!!.pdf"), "bad name_.pdf")
         self.assertEqual(clean_filename("   "), "evidence-upload")
 
+    def test_s3_storage_uses_object_storage_credentials(self):
+        import chargeback_copilot.uploads as uploads
+
+        class FakeBoto3:
+            kwargs = None
+
+            @classmethod
+            def client(cls, service, **kwargs):
+                cls.kwargs = kwargs
+                return object()
+
+        original_boto3 = uploads.boto3
+        original_backend = uploads.OBJECT_STORAGE_BACKEND
+        original_bucket = uploads.OBJECT_STORAGE_BUCKET
+        original_key = uploads.OBJECT_STORAGE_ACCESS_KEY_ID
+        original_secret = uploads.OBJECT_STORAGE_SECRET_ACCESS_KEY
+        try:
+            uploads.boto3 = FakeBoto3
+            uploads.OBJECT_STORAGE_BACKEND = "s3"
+            uploads.OBJECT_STORAGE_BUCKET = "test-bucket"
+            uploads.OBJECT_STORAGE_ACCESS_KEY_ID = "test-key"
+            uploads.OBJECT_STORAGE_SECRET_ACCESS_KEY = "test-secret"
+            uploads.storage_adapter()
+            self.assertEqual(FakeBoto3.kwargs["aws_access_key_id"], "test-key")
+            self.assertEqual(FakeBoto3.kwargs["aws_secret_access_key"], "test-secret")
+        finally:
+            uploads.boto3 = original_boto3
+            uploads.OBJECT_STORAGE_BACKEND = original_backend
+            uploads.OBJECT_STORAGE_BUCKET = original_bucket
+            uploads.OBJECT_STORAGE_ACCESS_KEY_ID = original_key
+            uploads.OBJECT_STORAGE_SECRET_ACCESS_KEY = original_secret
+
     def test_basic_upload_scanner_can_block_eicar_signature(self):
         import chargeback_copilot.scanning as scanning
 

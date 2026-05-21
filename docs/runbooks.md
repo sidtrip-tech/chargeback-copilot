@@ -11,12 +11,13 @@ Use this after each production deploy.
    - database backend is `postgres`
    - storage backend is `s3`
    - email is configured when SMTP is expected
-5. Sign in with a test account.
-6. Upload, download, and delete a small evidence file.
-7. Generate a packet.
-8. Open the export view.
-9. Send a test email.
-10. Check Render logs for `request.error` events.
+5. Run `MONITOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/production_monitor.py`.
+6. Sign in with a test account.
+7. Upload, download, and delete a small evidence file.
+8. Generate a packet.
+9. Open the export view.
+10. Send a test email.
+11. Check Render logs for `request.error` events.
 
 ## User Reports An Error
 

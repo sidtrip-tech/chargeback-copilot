@@ -10,6 +10,14 @@ Use `/api/readiness` manually after deployment or environment changes. It checks
 - evidence storage read/write/delete
 - email configuration status
 
+For command-line monitoring:
+
+```bash
+MONITOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/production_monitor.py
+```
+
+The monitor exits with a nonzero status if health/readiness fails, the database is not Postgres, storage is not S3, or email is not configured.
+
 ## Request IDs
 
 Every response includes an `X-Request-ID` header. Error responses also include `request_id` in the JSON body, and the frontend shows it in user-facing error messages.

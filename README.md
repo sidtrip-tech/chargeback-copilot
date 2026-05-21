@@ -78,6 +78,7 @@ The app now includes the first production-foundation slice:
 - Initial production Postgres schema in `db/migrations/001_initial_postgres_schema.sql`.
 - Postgres store adapter path selected by `DATABASE_URL=postgresql://...`.
 - Readiness check for database and evidence storage at `/api/readiness`.
+- Synthetic production monitor script at `scripts/production_monitor.py`.
 - First-pass CSRF protection, origin checks, auth rate limiting, request body limits, and browser security headers.
 - User data export and account deletion controls.
 - Evidence file upload with type/size checks, file metadata, download, and delete controls.

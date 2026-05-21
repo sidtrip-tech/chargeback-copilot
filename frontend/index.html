@@ -126,22 +126,51 @@
 
         <section id="startNewView" class="panel hidden">
           <div class="panel-heading">
-            <h3>Start A New Dispute Packet</h3>
-            <span class="pill">Manual evidence entry</span>
+            <div>
+              <p class="eyebrow">Guided intake</p>
+              <h3>Start A New Dispute Packet</h3>
+            </div>
+            <span class="pill">No draft saved until create</span>
           </div>
+          <div class="start-helper">
+            <p>Choose the situation first. You do not need all evidence now; we’ll help you add it next.</p>
+            <p class="muted">Only include information you believe is true. This prepares a packet; it does not submit to your bank or guarantee a result.</p>
+          </div>
+          <div class="intake-step">
+            <p class="label">Step 1</p>
+            <h4>What happened?</h4>
+            <div id="categoryCards" class="category-cards">
+              <button type="button" class="category-card" data-category="canceled_subscription">
+                <strong>I canceled but was still charged</strong>
+                <span>Useful for subscriptions, trials, or renewals you believe should have stopped.</span>
+              </button>
+              <button type="button" class="category-card" data-category="not_received">
+                <strong>I did not receive the item or service</strong>
+                <span>Useful when delivery, access, or service completion is missing.</span>
+              </button>
+              <button type="button" class="category-card" data-category="refund_not_received">
+                <strong>I was promised a refund but did not receive it</strong>
+                <span>Useful when the merchant approved a refund that has not appeared.</span>
+              </button>
+              <button type="button" class="category-card" data-category="unauthorized_charge">
+                <strong>I do not recognize this charge</strong>
+                <span>Useful when you do not recognize the merchant or transaction.</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="evidencePreview" class="evidence-preview hidden"></div>
+
           <form id="newCaseForm" class="form-grid">
+            <input type="hidden" name="category" id="newCaseCategory" required />
+            <div class="wide intake-step">
+              <p class="label">Step 2</p>
+              <h4>Enter the basic charge details</h4>
+            </div>
             <label>Merchant name<input name="merchant_name" required placeholder="Example: Streamly Pro" /></label>
             <label>Charge amount<input name="amount" required type="number" min="0.01" step="0.01" placeholder="12.99" /></label>
             <label>Charge date<input name="charge_date" required type="date" /></label>
             <label>Card issuer or bank<input name="issuer_name" required placeholder="Example: Chase" /></label>
-            <label class="wide">Dispute category
-              <select name="category" required>
-                <option value="canceled_subscription">I canceled but was still charged</option>
-                <option value="not_received">I did not receive the item or service</option>
-                <option value="refund_not_received">I was promised a refund but did not receive it</option>
-                <option value="unauthorized_charge">I do not recognize this charge</option>
-              </select>
-            </label>
             <label class="wide">What happened?<textarea name="user_summary" rows="3" placeholder="Keep this factual. You can refine it later."></textarea></label>
             <button type="submit">Create packet</button>
           </form>
@@ -158,93 +187,112 @@
           </div>
 
           <div id="detailColumn" class="detail-column">
-            <section class="summary-grid">
-              <div class="panel">
-                <p class="label">Dispute</p>
-                <div id="disputeSummary"></div>
+            <section id="completedView" class="completed-view hidden">
+              <div class="panel completed-hero">
+                <div>
+                  <p class="eyebrow">Completed packet</p>
+                  <h3 id="completedTitle">Ready to export</h3>
+                  <p id="completedSummary" class="muted"></p>
+                </div>
+                <div class="completed-actions">
+                  <span class="pill">Ready to export</span>
+                  <a id="completedExportBtn" class="button" href="#" target="_blank" rel="noreferrer">Export packet</a>
+                </div>
               </div>
-              <div class="panel">
-                <p class="label">Readiness</p>
-                <div id="readinessPanel"></div>
+
+              <div class="completed-grid">
+                <div class="panel">
+                  <p class="label">Packet Snapshot</p>
+                  <div id="completedSnapshot"></div>
+                </div>
+                <div class="panel">
+                  <div class="panel-heading">
+                    <h3>Outcome Feedback</h3>
+                  </div>
+                  <div id="completedOutcomePanel"></div>
+                </div>
               </div>
+
               <div class="panel">
-                <p class="label">Guidance</p>
-                <p id="guidance"></p>
+                <div class="panel-heading">
+                  <h3>Audit Details</h3>
+                  <span class="pill">Optional</span>
+                </div>
+                <div id="completedAudit"></div>
               </div>
             </section>
 
-            <section class="main-grid">
-              <div class="panel">
-                <div class="panel-heading">
-                  <h3>Evidence Checklist</h3>
+            <section id="prepView">
+              <section class="prep-hero panel">
+                <div>
+                  <p class="eyebrow">Next best action</p>
+                  <h3 id="prepActionTitle">Add missing evidence</h3>
+                  <p id="prepActionText" class="muted"></p>
                 </div>
-                <div id="checklist"></div>
-              </div>
+                <div id="readinessPanel"></div>
+              </section>
 
-              <div class="panel">
-                <div class="panel-heading">
-                  <h3>Add Evidence</h3>
+              <section class="prep-grid">
+                <div class="panel">
+                  <div class="panel-heading">
+                    <h3>Missing Evidence</h3>
+                    <span class="pill">Highest priority first</span>
+                  </div>
+                  <div id="gaps"></div>
                 </div>
-                <form id="evidenceForm" class="stack-form">
-                  <label>Evidence type
-                    <select name="type" required>
-                      <option value="statement_transaction">Card statement transaction</option>
-                      <option value="cancellation_confirmation">Cancellation confirmation</option>
-                      <option value="merchant_message">Merchant message</option>
-                      <option value="terms_or_policy">Terms or policy</option>
-                      <option value="order_confirmation">Order confirmation</option>
-                      <option value="delivery_status">Tracking or delivery status</option>
-                      <option value="service_status">Service status</option>
-                      <option value="refund_promise">Refund promise</option>
-                      <option value="return_proof">Return proof</option>
-                      <option value="merchant_relationship">Merchant relationship note</option>
-                      <option value="issuer_alert">Bank alert</option>
-                    </select>
-                  </label>
-                  <label>Title<input name="title" required placeholder="Example: Cancellation email" /></label>
-                  <label>Source<input name="source" placeholder="Example: Gmail, Chase app, support chat" /></label>
-                  <label>Date<input name="occurred_at" required type="date" /></label>
-                  <label>Summary<textarea name="summary" rows="4" required placeholder="State only what this evidence shows."></textarea></label>
-                  <button type="submit">Add evidence</button>
-                </form>
-              </div>
 
-              <div class="panel">
-                <div class="panel-heading">
-                  <h3>Evidence Gaps</h3>
+                <div class="panel">
+                  <div class="panel-heading">
+                    <h3>Add Evidence</h3>
+                  </div>
+                  <form id="evidenceForm" class="stack-form">
+                    <label>Evidence type
+                      <select name="type" required>
+                        <option value="statement_transaction">Card statement transaction</option>
+                        <option value="cancellation_confirmation">Cancellation confirmation</option>
+                        <option value="merchant_message">Merchant message</option>
+                        <option value="terms_or_policy">Terms or policy</option>
+                        <option value="order_confirmation">Order confirmation</option>
+                        <option value="delivery_status">Tracking or delivery status</option>
+                        <option value="service_status">Service status</option>
+                        <option value="refund_promise">Refund promise</option>
+                        <option value="return_proof">Return proof</option>
+                        <option value="merchant_relationship">Merchant relationship note</option>
+                        <option value="issuer_alert">Bank alert</option>
+                      </select>
+                    </label>
+                    <label>Title<input name="title" required placeholder="Example: Cancellation email" /></label>
+                    <label>Source<input name="source" placeholder="Example: Gmail, Chase app, support chat" /></label>
+                    <label>Date<input name="occurred_at" required type="date" /></label>
+                    <label>Summary<textarea name="summary" rows="4" required placeholder="State only what this evidence shows."></textarea></label>
+                    <button type="submit">Add evidence</button>
+                  </form>
                 </div>
-                <div id="gaps"></div>
-              </div>
 
-              <div class="panel">
-                <div class="panel-heading">
-                  <h3>Next Steps</h3>
+                <div class="panel">
+                  <div class="panel-heading">
+                    <h3>Generate Draft</h3>
+                    <span id="packetStatus" class="pill"></span>
+                  </div>
+                  <p id="generateHelper" class="muted"></p>
+                  <div id="nextSteps"></div>
                 </div>
-                <div id="nextSteps"></div>
-              </div>
 
-              <div class="panel">
-                <div class="panel-heading">
-                  <h3>Evidence Timeline</h3>
+                <div class="panel">
+                  <div class="panel-heading">
+                    <h3>Dispute Snapshot</h3>
+                  </div>
+                  <div id="disputeSummary"></div>
                 </div>
-                <div id="timeline"></div>
-              </div>
 
-              <div class="panel">
-                <div class="panel-heading">
-                  <h3>Outcome Feedback</h3>
-                  <span class="pill">Completed only</span>
+                <div class="panel wide">
+                  <div class="panel-heading">
+                    <h3>Review Details</h3>
+                    <span class="pill">Optional</span>
+                  </div>
+                  <div id="prepReview"></div>
                 </div>
-                <div id="outcomePanel"></div>
-              </div>
-
-              <div class="panel wide">
-                <div class="panel-heading">
-                  <h3>Generated Packet</h3>
-                  <span id="packetStatus" class="pill"></span>
-                </div>
-                <div id="packet" class="empty-state">Generate a packet after reviewing the checklist and evidence gaps.</div>
-              </div>
+              </section>
             </section>
           </div>
         </section>

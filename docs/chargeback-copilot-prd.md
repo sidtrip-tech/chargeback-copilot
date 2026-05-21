@@ -246,14 +246,34 @@ The user may add an optional note about what happened. Outcome feedback is for p
 - Derive packet status from readiness and packet validation:
   - In Progress: missing required evidence, no generated packet, blocked packet, or draft state.
   - Completed: generated packet with no validation errors and no high-severity gaps.
-- Show dashboard summary metrics:
-  - total packets
-  - in-progress packets
-  - completed/export-ready packets
-  - packets with high-priority evidence gaps
-  - completed packets with reported success/failure
+- Optimize each status for a different user job:
+  - In Progress: prepare, add evidence, fix gaps, and generate a packet.
+  - Completed: export the packet, track issuer outcome, and optionally audit details.
+  - Start New Packet: complete guided intake with minimal distraction.
+- Optimize Start New Packet for guided confidence:
+  - Use a two-step intake.
+  - Step 1 asks the user to choose their situation using plain-language category cards.
+  - Step 2 asks for only the required charge details and a short factual summary.
+  - Show a short evidence preview after category selection with 3-4 likely evidence items.
+  - Explain that users do not need all evidence before creating the packet.
+  - Do not save a partial packet after category selection in v1; create the packet only after Step 2 submission.
+  - Route the newly created packet into In Progress.
+- Optimize In Progress around **Next Best Action**:
+  - Show readiness and the top missing evidence item first.
+  - List high-priority gaps before lower-priority supporting detail.
+  - Provide contextual `Add this evidence` actions from missing-evidence cards.
+  - Preselect the likely evidence type when a user chooses a contextual add action.
+  - Keep manual evidence entry available for evidence that does not map to a listed gap.
+  - Keep Generate visible even below 100% readiness, with clear copy that export may remain blocked until required evidence and validation pass.
+  - Move checklist, timeline, generated draft, and category guidance into optional review sections.
+- Show dashboard summary metrics that change by selected tab:
+  - In Progress: in-progress packets, high-priority gaps, average readiness, ready to generate.
+  - Completed: completed packets, reported success, reported failure, pending outcome.
+  - Start New Packet: total packets created, in progress, completed, and next step.
+- Include short captions on metric cards so users understand why the number matters.
 - Show readiness score based on required checklist completion.
 - Show evidence progress as satisfied required items out of total required items.
+- Reduce cognitive load in Completed by hiding preparation-heavy sections by default. Supporting details such as cited claims, evidence timeline, packet summary, and checklist should be available through collapsible audit sections rather than always visible.
 
 ### Reason Selection
 
@@ -299,6 +319,7 @@ The user may add an optional note about what happened. Outcome feedback is for p
 - Support an optional user note describing the real-life issuer update.
 - Show outcome status on completed packet cards and packet detail.
 - Treat feedback as tracking data, not prediction, advice, or proof of product efficacy.
+- In Completed, make outcome feedback the primary post-export interaction alongside the export action.
 
 ## 8. AI And Guardrails
 
@@ -518,4 +539,13 @@ Exit criteria:
 - Prototype login clearly separates public and private experiences without implying real account security.
 - Private workspace includes In Progress, Completed, and Start New Packet tabs.
 - Completed packets allow users to record pending, success, or failure outcome feedback.
+- Completed packet detail prioritizes export and outcome tracking, with evidence, timeline, checklist, and claims behind collapsible audit sections.
+- Add Evidence is visible for In Progress packets and hidden for Completed packets.
+- In Progress shows next best action, contextual missing-evidence cards, readiness progress, and Generate before optional review details.
+- In Progress contextual `Add this evidence` actions preselect the likely evidence type.
+- In Progress keeps Generate visible below 100% readiness and explains that the draft may remain blocked from export.
+- Start New Packet uses two-step guided intake, category cards, and evidence preview before packet creation.
+- Start New Packet does not create or save partial drafts before required charge details are submitted.
+- Dashboard number cards are contextual by tab and do not show the same global metrics across all statuses.
+- Outcome feedback is absent from In Progress and available only for Completed packets.
 - Outcome feedback is never represented as prediction, guarantee, legal advice, financial advice, or issuer guidance.

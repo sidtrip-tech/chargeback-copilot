@@ -336,7 +336,7 @@ button.ghost {
 
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }
@@ -358,6 +358,15 @@ button.ghost {
   font-size: 24px;
 }
 
+.summary-cards em {
+  display: block;
+  margin-top: 4px;
+  color: #526177;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
 .dashboard-layout {
   display: grid;
   grid-template-columns: 310px 1fr;
@@ -368,6 +377,54 @@ button.ghost {
 .panel {
   min-width: 0;
   padding: 16px;
+}
+
+.completed-view {
+  display: grid;
+  gap: 14px;
+}
+
+.completed-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.completed-hero h3 {
+  margin: 0 0 6px;
+  font-size: 28px;
+}
+
+.completed-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.completed-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+details {
+  border: 1px solid #e4eaf1;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #fbfdff;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+details > :not(summary) {
+  margin-top: 10px;
 }
 
 .panel-heading {
@@ -451,6 +508,25 @@ button.ghost {
   grid-column: span 2;
 }
 
+.prep-hero {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.prep-hero h3 {
+  margin: 0 0 6px;
+  font-size: 28px;
+}
+
+.prep-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -465,6 +541,88 @@ button.ghost {
 .stack-form {
   display: grid;
   gap: 10px;
+}
+
+.start-helper {
+  border: 1px solid #d8eef4;
+  border-radius: 8px;
+  background: #f0fbff;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.start-helper p {
+  margin: 0 0 6px;
+}
+
+.intake-step {
+  margin-bottom: 12px;
+}
+
+.intake-step h4 {
+  margin: 4px 0 10px;
+  font-size: 20px;
+}
+
+.category-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.category-card {
+  min-height: 110px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  background: #f8fafc;
+  border-color: var(--line);
+  color: var(--ink);
+  padding: 14px;
+}
+
+.category-card:hover,
+.category-card.active {
+  background: #edf8fb;
+  border-color: #67c8d8;
+}
+
+.category-card strong,
+.category-card span {
+  display: block;
+}
+
+.category-card span {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.evidence-preview {
+  border: 1px solid #e4eaf1;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+  background: #fbfdff;
+}
+
+.evidence-preview h4 {
+  margin: 4px 0;
+}
+
+.preview-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview-list span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: white;
+  padding: 6px 9px;
+  color: #41516a;
+  font-size: 13px;
 }
 
 label {
@@ -496,6 +654,10 @@ label {
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 10px;
+}
+
+.gap-add {
+  margin-top: 10px;
 }
 
 .check-item {
@@ -608,9 +770,13 @@ label {
   .summary-grid,
   .main-grid,
   .packet-grid,
+  .prep-grid,
+  .prep-hero,
   .form-grid,
   .summary-cards,
-  .info-grid {
+  .info-grid,
+  .category-cards,
+  .completed-grid {
     grid-template-columns: 1fr;
   }
 
@@ -622,7 +788,8 @@ label {
   }
 
   .topbar,
-  .public-nav {
+  .public-nav,
+  .completed-hero {
     align-items: flex-start;
     flex-direction: column;
   }

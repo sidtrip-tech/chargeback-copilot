@@ -5,6 +5,7 @@ const state = {
   summary: null,
   activeId: null,
   detail: null,
+  selectedStartCategory: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -72,6 +73,7 @@ function setTab(tab) {
   state.tab = tab;
   showNotice("");
   renderTabs();
+  renderSummaryCards();
   if (tab === "start_new") {
     state.activeId = null;
     state.detail = null;
@@ -110,15 +112,43 @@ function filteredDisputes() {
 
 function renderSummaryCards() {
   const summary = state.summary || {};
-  $("summaryCards").innerHTML = [
-    ["Total packets", summary.total || 0],
-    ["In progress", summary.in_progress || 0],
-    ["Completed", summary.completed || 0],
-    ["High-priority gaps", summary.high_gap || 0],
-    ["Reported success", summary.reported_success || 0],
-    ["Reported failure", summary.reported_failure || 0],
-  ]
-    .map(([label, value]) => `<article><span>${label}</span><strong>${value}</strong></article>`)
+  const inProgress = state.disputes.filter((item) => item.derived_status === "in_progress");
+  const completed = state.disputes.filter((item) => item.derived_status === "completed");
+  const averageReadiness = inProgress.length
+    ? Math.round(inProgress.reduce((total, item) => total + item.readiness_score, 0) / inProgress.length)
+    : 0;
+  const readyToGenerate = inProgress.filter((item) => item.readiness_score === 100).length;
+  const pendingOutcome = completed.filter((item) => !item.outcome_feedback || item.outcome_feedback.outcome === "pending").length;
+  const cardsByTab = {
+    in_progress: [
+      ["In-progress packets", summary.in_progress || 0, "Packets still being prepared"],
+      ["High-priority gaps", summary.high_gap || 0, "Missing evidence to resolve"],
+      ["Average readiness", `${averageReadiness}%`, "Across in-progress packets"],
+      ["Ready to generate", readyToGenerate, "Packets with required evidence"],
+    ],
+    completed: [
+      ["Completed packets", summary.completed || 0, "Ready or already exported"],
+      ["Reported success", summary.reported_success || 0, "Issuer outcome marked success"],
+      ["Reported failure", summary.reported_failure || 0, "Issuer outcome marked failure"],
+      ["Pending outcome", pendingOutcome, "Waiting for issuer update"],
+    ],
+    start_new: [
+      ["Total packets created", summary.total || 0, "All packets in this workspace"],
+      ["In progress", summary.in_progress || 0, "Currently being prepared"],
+      ["Completed", summary.completed || 0, "Ready to export or track"],
+      ["Next step", "Choose situation", "Start with the dispute type"],
+    ],
+  };
+  $("summaryCards").innerHTML = (cardsByTab[state.tab] || cardsByTab.in_progress)
+    .map(
+      ([label, value, caption]) => `
+      <article>
+        <span>${label}</span>
+        <strong>${value}</strong>
+        <em>${caption}</em>
+      </article>
+    `
+    )
     .join("");
 }
 
@@ -154,31 +184,38 @@ function renderStartNew() {
   $("dashboardView").classList.add("hidden");
   $("generateBtn").disabled = true;
   $("exportBtn").classList.add("disabled");
+  renderCategorySelection(state.selectedStartCategory);
 }
 
 function renderEmptyDetail() {
   $("generateBtn").disabled = true;
   $("exportBtn").classList.add("disabled");
+  $("completedView").classList.add("hidden");
+  $("prepView").classList.remove("hidden");
   $("disputeSummary").innerHTML = "";
   $("readinessPanel").innerHTML = "<p class='empty-state'>Select a packet to view details.</p>";
-  $("guidance").textContent = "";
-  $("checklist").innerHTML = "";
   $("gaps").innerHTML = "";
-  $("timeline").innerHTML = "";
   $("nextSteps").innerHTML = "";
-  $("outcomePanel").innerHTML = "";
   $("packetStatus").textContent = "";
-  $("packet").className = "empty-state";
-  $("packet").textContent = "Select a packet to view generated content.";
+  $("generateHelper").textContent = "";
+  $("prepReview").innerHTML = "";
 }
 
 function renderDetail() {
   const detail = state.detail;
   const dispute = detail.dispute;
   const packet = detail.packet;
-  $("generateBtn").disabled = false;
+  const isCompleted = detail.derived_status === "completed";
+  $("generateBtn").disabled = isCompleted;
   $("exportBtn").href = `/api/disputes/${dispute.id}/export`;
   $("exportBtn").classList.toggle("disabled", !detail.export_ready);
+  $("completedView").classList.toggle("hidden", !isCompleted);
+  $("prepView").classList.toggle("hidden", isCompleted);
+  if (isCompleted) {
+    renderCompletedDetail(detail);
+    showNotice("");
+    return;
+  }
   $("disputeSummary").innerHTML = [
     ["Merchant", dispute.merchant_name],
     ["Amount", money(dispute.amount, dispute.currency)],
@@ -189,14 +226,11 @@ function renderDetail() {
   ]
     .map(([label, value]) => `<div class="meta-row"><span>${label}</span><strong>${value}</strong></div>`)
     .join("");
-  $("guidance").textContent = `${detail.plan.careful_guidance} Remember: this tool prepares information; it does not guarantee an issuer result.`;
+  renderPrepAction(detail);
   renderReadiness(detail);
-  renderChecklist(detail.plan.checklist);
   renderGaps(detail.evidence_gaps);
-  renderTimeline(detail.timeline);
   renderNextSteps(detail.next_steps);
-  renderOutcome(detail);
-  renderPacket(packet);
+  renderPrepReview(detail);
 
   if (packet?.validation_errors?.length) {
     showNotice(`Packet validation blocked export: ${packet.validation_errors.join("; ")}`);
@@ -205,6 +239,56 @@ function renderDetail() {
   } else {
     showNotice("");
   }
+}
+
+function renderPrepAction(detail) {
+  const topGap = sortedGaps(detail.evidence_gaps)[0];
+  const ready = detail.readiness_score === 100;
+  $("prepActionTitle").textContent = topGap ? `Add ${topGap.label.toLowerCase()}` : "Generate your packet";
+  $("prepActionText").textContent = topGap
+    ? topGap.suggested_action
+    : "Required evidence is complete. Generate a packet, review the citations, then export when ready.";
+  $("generateHelper").textContent = ready
+    ? "Ready to generate an exportable packet."
+    : "You can generate a draft, but export may stay blocked until required evidence is added.";
+}
+
+function renderCompletedDetail(detail) {
+  const dispute = detail.dispute;
+  const packet = detail.packet;
+  $("completedTitle").textContent = `${dispute.merchant_name} packet is ready`;
+  $("completedSummary").textContent = "Export the packet, submit through your issuer's official channel, then come back to track the real-life result.";
+  $("completedExportBtn").href = `/api/disputes/${dispute.id}/export`;
+  $("completedSnapshot").innerHTML = [
+    ["Merchant", dispute.merchant_name],
+    ["Amount", money(dispute.amount, dispute.currency)],
+    ["Issuer", dispute.issuer_name],
+    ["Category", detail.plan.label],
+    ["Evidence progress", `${detail.evidence_progress.satisfied_required} of ${detail.evidence_progress.total_required} required items`],
+    ["Readiness", `${detail.readiness_score}%`],
+  ]
+    .map(([label, value]) => `<div class="meta-row"><span>${label}</span><strong>${value}</strong></div>`)
+    .join("");
+  renderOutcomeInto("completedOutcomePanel", detail);
+  $("completedAudit").innerHTML = `
+    <details open>
+      <summary>View packet summary</summary>
+      <p>${packet.summary}</p>
+      <p><strong>Suggested bank message:</strong> ${packet.suggested_bank_message}</p>
+    </details>
+    <details>
+      <summary>View cited claims</summary>
+      ${renderClaimList(packet)}
+    </details>
+    <details>
+      <summary>View evidence timeline</summary>
+      ${renderTimelineList(detail.timeline)}
+    </details>
+    <details>
+      <summary>View evidence checklist</summary>
+      ${renderChecklistList(detail.plan.checklist)}
+    </details>
+  `;
 }
 
 function renderReadiness(detail) {
@@ -220,7 +304,11 @@ function renderReadiness(detail) {
 }
 
 function renderChecklist(items) {
-  $("checklist").innerHTML = items
+  $("checklist").innerHTML = renderChecklistList(items);
+}
+
+function renderChecklistList(items) {
+  return items
     .map(
       (item) => `
       <div class="check-item">
@@ -237,24 +325,40 @@ function renderChecklist(items) {
 }
 
 function renderGaps(gaps) {
-  $("gaps").innerHTML = gaps.length
-    ? gaps
+  const sorted = sortedGaps(gaps);
+  $("gaps").innerHTML = sorted.length
+    ? sorted
         .map(
           (gap) => `
-      <div class="gap-item">
+      <div class="gap-item" data-requirement="${gap.requirement_key}">
         <span class="pill ${gap.severity === "high" ? "danger" : "warn"}">${gap.severity}</span>
         <p><strong>${gap.label}</strong></p>
         <p>${gap.explanation}</p>
         <p class="muted">${gap.suggested_action}</p>
+        <button class="gap-add" type="button" data-requirement="${gap.requirement_key}">Add this evidence</button>
       </div>
     `
         )
         .join("")
-    : `<p class="empty-state">No evidence gaps detected.</p>`;
+    : `<p class="empty-state">No evidence gaps detected. Generate a packet and review the draft.</p>`;
+  document.querySelectorAll(".gap-add").forEach((button) => {
+    button.addEventListener("click", () => preselectEvidence(button.dataset.requirement));
+  });
+}
+
+function sortedGaps(gaps) {
+  return [...gaps].sort((a, b) => {
+    if (a.severity === b.severity) return a.label.localeCompare(b.label);
+    return a.severity === "high" ? -1 : 1;
+  });
 }
 
 function renderTimeline(events) {
-  $("timeline").innerHTML = events.length
+  $("timeline").innerHTML = renderTimelineList(events);
+}
+
+function renderTimelineList(events) {
+  return events.length
     ? events
         .map(
           (event) => `
@@ -274,10 +378,45 @@ function renderNextSteps(steps) {
   $("nextSteps").innerHTML = steps.map((step) => `<div class="step">${step}</div>`).join("");
 }
 
+function renderPrepReview(detail) {
+  const packet = detail.packet;
+  $("prepReview").innerHTML = `
+    <details>
+      <summary>View evidence checklist</summary>
+      ${renderChecklistList(detail.plan.checklist)}
+    </details>
+    <details>
+      <summary>View evidence timeline</summary>
+      ${renderTimelineList(detail.timeline)}
+    </details>
+    <details>
+      <summary>View category guidance</summary>
+      <p>${detail.plan.careful_guidance}</p>
+      <p class="muted">This tool prepares information; it does not guarantee an issuer result.</p>
+    </details>
+    <details ${packet ? "open" : ""}>
+      <summary>View generated draft</summary>
+      ${packet ? renderPacketContent(packet) : '<p class="empty-state">Generate a packet to see a draft here.</p>'}
+    </details>
+  `;
+  const status = $("packetStatus");
+  if (packet) {
+    status.textContent = packet.status;
+    status.className = `pill ${packet.status === "blocked" ? "danger" : ""}`;
+  } else {
+    status.textContent = "not generated";
+    status.className = "pill warn";
+  }
+}
+
 function renderOutcome(detail) {
+  renderOutcomeInto("outcomePanel", detail);
+}
+
+function renderOutcomeInto(containerId, detail) {
   const disabled = detail.derived_status !== "completed";
   const outcome = detail.outcome_feedback || { outcome: "pending", note: "" };
-  $("outcomePanel").innerHTML = `
+  $(containerId).innerHTML = `
     <p class="muted">Track the real-life issuer result after you submit. This is not a prediction or advice.</p>
     <form id="outcomeForm" class="stack-form">
       <label>Result
@@ -307,22 +446,18 @@ function renderPacket(packet) {
   status.textContent = packet.status;
   status.className = `pill ${packet.status === "blocked" ? "danger" : ""}`;
   $("packet").className = "packet-grid";
-  $("packet").innerHTML = `
+  $("packet").innerHTML = renderPacketContent(packet);
+}
+
+function renderPacketContent(packet) {
+  return `
     <div class="full">
       <p>${packet.summary}</p>
       <p><strong>Suggested bank message:</strong> ${packet.suggested_bank_message}</p>
     </div>
     <div>
       <h4>Cited Claims</h4>
-      ${packet.claims
-        .map(
-          (claim) => `
-        <div class="claim">
-          <p>${claim.text}</p>
-          <div class="citations">Evidence: ${claim.citation_evidence_ids.join(", ")}</div>
-        </div>`
-        )
-        .join("") || '<p class="empty-state">No supported claims yet.</p>'}
+      ${renderClaimList(packet)}
     </div>
     <div>
       <h4>Packet Safety</h4>
@@ -332,14 +467,54 @@ function renderPacket(packet) {
   `;
 }
 
+const REQUIREMENT_TO_EVIDENCE_TYPE = {
+  transaction: "statement_transaction",
+  cancellation: "cancellation_confirmation",
+  merchant_response: "merchant_message",
+  merchant_contact: "merchant_message",
+  terms: "terms_or_policy",
+  delivery: "delivery_status",
+  refund_promise: "refund_promise",
+  return_or_cancel: "return_proof",
+  issuer_alert: "issuer_alert",
+  merchant_relationship: "merchant_relationship",
+};
+
+function preselectEvidence(requirementKey) {
+  const type = REQUIREMENT_TO_EVIDENCE_TYPE[requirementKey];
+  if (type) {
+    document.querySelector('#evidenceForm select[name="type"]').value = type;
+  }
+  document.querySelector('#evidenceForm input[name="title"]').focus();
+}
+
+function renderClaimList(packet) {
+  return packet.claims
+    .map(
+      (claim) => `
+        <div class="claim">
+          <p>${claim.text}</p>
+          <div class="citations">Evidence: ${claim.citation_evidence_ids.join(", ")}</div>
+        </div>`
+    )
+    .join("") || '<p class="empty-state">No supported claims yet.</p>';
+}
+
 async function createCase(event) {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  if (!state.selectedStartCategory) {
+    showNotice("Choose the situation before creating a packet.");
+    return;
+  }
+  const formEl = event.currentTarget;
+  const form = new FormData(formEl);
   const body = Object.fromEntries(form.entries());
   const detail = await request("/api/disputes", { method: "POST", body: JSON.stringify(body) });
   state.tab = "in_progress";
   state.activeId = detail.dispute.id;
-  event.currentTarget.reset();
+  state.selectedStartCategory = null;
+  formEl.reset();
+  renderCategorySelection(null);
   $("startNewView").classList.add("hidden");
   $("dashboardView").classList.remove("hidden");
   await loadDisputes();
@@ -347,13 +522,14 @@ async function createCase(event) {
 
 async function addEvidence(event) {
   event.preventDefault();
-  const form = new FormData(event.currentTarget);
+  const formEl = event.currentTarget;
+  const form = new FormData(formEl);
   const body = Object.fromEntries(form.entries());
   state.detail = await request(`/api/disputes/${state.activeId}/evidence`, {
     method: "POST",
     body: JSON.stringify(body),
   });
-  event.currentTarget.reset();
+  formEl.reset();
   await loadDisputes();
 }
 
@@ -384,3 +560,50 @@ document.querySelectorAll(".tab").forEach((button) => button.addEventListener("c
 $("newCaseForm").addEventListener("submit", (event) => createCase(event).catch((error) => showNotice(error.message)));
 $("evidenceForm").addEventListener("submit", (event) => addEvidence(event).catch((error) => showNotice(error.message)));
 $("generateBtn").addEventListener("click", () => generatePacket().catch((error) => showNotice(error.message)));
+
+const START_CATEGORY_EVIDENCE = {
+  canceled_subscription: {
+    label: "I canceled but was still charged",
+    evidence: ["Card statement charge", "Cancellation confirmation", "Merchant support response", "Subscription terms or renewal notice"],
+  },
+  not_received: {
+    label: "I did not receive the item or service",
+    evidence: ["Card statement or order confirmation", "Tracking or delivery status", "Merchant contact attempt", "Promised delivery date"],
+  },
+  refund_not_received: {
+    label: "I was promised a refund but did not receive it",
+    evidence: ["Original transaction", "Refund promise or approval", "Return or cancellation proof", "Merchant follow-up"],
+  },
+  unauthorized_charge: {
+    label: "I do not recognize this charge",
+    evidence: ["Card statement transaction", "What you know about the merchant", "Bank alert or issuer message", "Merchant explanation if available"],
+  },
+};
+
+function renderCategorySelection(category) {
+  state.selectedStartCategory = category;
+  $("newCaseCategory").value = category || "";
+  document.querySelectorAll(".category-card").forEach((card) => {
+    card.classList.toggle("active", card.dataset.category === category);
+  });
+  const preview = $("evidencePreview");
+  if (!category) {
+    preview.classList.add("hidden");
+    preview.innerHTML = "";
+    return;
+  }
+  const config = START_CATEGORY_EVIDENCE[category];
+  preview.classList.remove("hidden");
+  preview.innerHTML = `
+    <p class="label">Evidence preview</p>
+    <h4>${config.label}</h4>
+    <p class="muted">Top evidence that may help. You do not need everything now; we’ll help you add evidence next.</p>
+    <div class="preview-list">
+      ${config.evidence.map((item) => `<span>${item}</span>`).join("")}
+    </div>
+  `;
+}
+
+document.querySelectorAll(".category-card").forEach((card) => {
+  card.addEventListener("click", () => renderCategorySelection(card.dataset.category));
+});

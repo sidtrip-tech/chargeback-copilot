@@ -17,6 +17,15 @@ def email_delivery_configured() -> bool:
     return bool(SMTP_HOST and SMTP_FROM_EMAIL)
 
 
+def email_health() -> dict[str, object]:
+    return {
+        "ok": True,
+        "configured": email_delivery_configured(),
+        "host": SMTP_HOST or "not_configured",
+        "from_email": SMTP_FROM_EMAIL if email_delivery_configured() else "not_configured",
+    }
+
+
 def auth_link(path: str, token: str) -> str:
     return f"{PUBLIC_BASE_URL}/?{urlencode({path: token})}#authPanel"
 

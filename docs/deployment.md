@@ -37,7 +37,8 @@ Expected readiness response:
   "timestamp": "...",
   "checks": {
     "database": { "ok": true, "backend": "postgres" },
-    "storage": { "ok": true, "backend": "s3", "bucket": "your-private-bucket" }
+    "storage": { "ok": true, "backend": "s3", "bucket": "your-private-bucket" },
+    "email": { "ok": true, "configured": true, "host": "smtp.your-provider.com", "from_email": "support@your-domain.com" }
   }
 }
 ```

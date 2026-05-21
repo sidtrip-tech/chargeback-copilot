@@ -7,6 +7,7 @@ const state = {
   activeId: null,
   detail: null,
   selectedStartCategory: null,
+  emailDeliveryConfigured: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -76,6 +77,7 @@ function showAuthPanel() {
 async function enterPrivate(data) {
   state.authenticated = true;
   state.user = data.user;
+  state.emailDeliveryConfigured = data.email_delivery_configured ?? state.emailDeliveryConfigured;
   $("publicPage").classList.add("hidden");
   $("privateApp").classList.remove("hidden");
   renderAccountStatus();
@@ -88,7 +90,7 @@ function renderAccountStatus() {
   $("accountStatus").textContent = state.user.email_verified
     ? `${state.user.email} · email verified`
     : `${state.user.email} · email not verified`;
-  $("verifyEmailBtn").classList.toggle("hidden", Boolean(state.user.email_verified));
+  $("verifyEmailBtn").classList.toggle("hidden", Boolean(state.user.email_verified) || state.emailDeliveryConfigured === false);
 }
 
 async function demoLogin() {
@@ -125,7 +127,11 @@ async function requestPasswordReset(event) {
   const body = Object.fromEntries(new FormData(formEl).entries());
   const data = await request("/api/auth/request-password-reset", { method: "POST", body: JSON.stringify(body) });
   formEl.reset();
-  showPublicNotice(data.message);
+  showPublicNotice(
+    data.email_delivery_configured
+      ? data.message
+      : "Email delivery is not configured yet, so reset links cannot be sent."
+  );
 }
 
 async function resetPassword(event) {
@@ -148,6 +154,8 @@ async function verifyEmail(event) {
 
 async function requestEmailVerification() {
   const data = await request("/api/auth/request-email-verification", { method: "POST", body: "{}" });
+  state.emailDeliveryConfigured = data.email_delivery_configured;
+  renderAccountStatus();
   showNotice(data.email_sent ? "Verification email sent." : "Email delivery is not configured yet.");
 }
 

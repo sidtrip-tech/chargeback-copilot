@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from .auth import DEMO_USER_ID, hash_password, new_auth_token, verify_password
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
-from .emailer import email_delivery_configured, send_password_reset_email, send_verification_email
+from .emailer import email_delivery_configured, email_health, send_password_reset_email, send_verification_email
 from .jobs import enqueue_job, list_jobs, run_once
 from .models import AuthToken, AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback, User
 from .packets import generate_template_packet
@@ -75,6 +75,7 @@ def readiness() -> Dict[str, Any]:
     checks = {
         "database": database_health(),
         "storage": storage_healthcheck(),
+        "email": email_health(),
     }
     return {
         "ok": all(item["ok"] for item in checks.values()),

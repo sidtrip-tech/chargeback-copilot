@@ -205,6 +205,7 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["checks"]["database"]["backend"], "sqlite")
         self.assertEqual(payload["checks"]["storage"]["backend"], "local")
+        self.assertIn("configured", payload["checks"]["email"])
 
     def test_disputes_are_scoped_by_owner(self):
         init_db()

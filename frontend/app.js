@@ -658,12 +658,12 @@ async function addEvidence(event) {
 
 async function generatePacket() {
   if (!state.activeId) return;
-  state.detail = await request(`/api/disputes/${state.activeId}/generate`, { method: "POST", body: "{}" });
-  await loadDisputes();
-  if (state.detail.derived_status === "completed") {
+  const generatedDetail = await request(`/api/disputes/${state.activeId}/generate`, { method: "POST", body: "{}" });
+  state.detail = generatedDetail;
+  if (generatedDetail.derived_status === "completed") {
     state.tab = "completed";
-    await loadDisputes();
   }
+  await loadDisputes();
 }
 
 async function saveOutcome(event) {

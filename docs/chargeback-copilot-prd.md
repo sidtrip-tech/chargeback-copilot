@@ -298,6 +298,7 @@ The user may add an optional note about what happened. Outcome feedback is for p
 
 - Support manual evidence entry in MVP.
 - Upload support should preserve file name, date, source, content type, size, storage key, scan status, and user-written summary.
+- Uploaded files should be downloadable and deletable only by the account owner.
 - Allow users to mark evidence as relevant, uncertain, or excluded.
 
 ### Timeline Builder

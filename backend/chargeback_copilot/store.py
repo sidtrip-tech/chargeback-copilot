@@ -895,6 +895,63 @@ def list_evidence_files(owner_id: str, dispute_id: Optional[str] = None) -> List
         conn.close()
 
 
+def get_evidence_file(owner_id: str, file_id: str) -> Optional[EvidenceFile]:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            row = conn.execute(
+                "SELECT * FROM evidence_files WHERE owner_id = %s AND id = %s AND deleted_at IS NULL",
+                (owner_id, file_id),
+            ).fetchone()
+            if not row:
+                return None
+            return EvidenceFile(
+                id=row["id"],
+                evidence_id=row["evidence_id"],
+                dispute_id=row["dispute_id"],
+                owner_id=row["owner_id"],
+                original_filename=row["original_filename"],
+                content_type=row["content_type"],
+                size_bytes=row["size_bytes"],
+                storage_bucket=row["storage_bucket"],
+                storage_key=row["storage_key"],
+                scan_status=row["scan_status"],
+                extraction_status=row["extraction_status"],
+                created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
+            )
+        finally:
+            conn.close()
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT payload FROM evidence_files WHERE owner_id = ? AND id = ?",
+            (owner_id, file_id),
+        ).fetchone()
+        return _load_evidence_file(row["payload"]) if row else None
+    finally:
+        conn.close()
+
+
+def delete_evidence_file(owner_id: str, file_id: str, deleted_at: str) -> None:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            conn.execute(
+                "UPDATE evidence_files SET deleted_at = %s WHERE owner_id = %s AND id = %s",
+                (deleted_at, owner_id, file_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return
+    conn = connect()
+    try:
+        conn.execute("DELETE FROM evidence_files WHERE owner_id = ? AND id = ?", (owner_id, file_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def list_outcomes(owner_id: str) -> List[OutcomeFeedback]:
     if using_postgres():
         conn = connect_postgres()

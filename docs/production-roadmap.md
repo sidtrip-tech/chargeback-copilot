@@ -133,8 +133,8 @@ Current implementation status:
 - Updated Render Blueprint for managed Postgres using Render's `fromDatabase` connection string reference.
 - Added first-pass production hardening: secure production cookie flag, CSRF protection, origin allowlist checks, request body limit, basic auth rate limiting, and browser security headers.
 - Added user data export and account deletion controls as a privacy/compliance foundation.
-- Added local evidence file upload with type/size checks and production-shaped file metadata. Object storage is still required before real sensitive evidence upload at scale.
-- Added a storage adapter with local and S3-compatible backends selected by `OBJECT_STORAGE_BACKEND`.
+- Added local evidence file upload with type/size checks, production-shaped file metadata, owner-checked download, and delete controls. Object storage is still required before real sensitive evidence upload at scale.
+- Added a storage adapter with local and S3-compatible backends selected by `OBJECT_STORAGE_BACKEND`, including private-bucket read/delete paths through authenticated app routes.
 - Added upload scan-status enforcement with a basic scanner mode; managed malware scanning is still required before real sensitive uploads at scale.
 - Improved export as PDF-ready HTML with print styling and uploaded-file index. Native server-side PDF generation remains a future background job.
 - Added a background job table, job status API, upload processing enqueue path, and one-shot worker script.

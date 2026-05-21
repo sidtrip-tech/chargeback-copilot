@@ -5,6 +5,7 @@ import os
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import quote
 from urllib.parse import urlparse
 
 from chargeback_copilot.auth import CSRF_COOKIE, SESSION_COOKIE, new_csrf_token
@@ -39,6 +40,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send_text(self, text, status=200, content_type="text/plain", extra_headers=None):
         data = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(data)))
+        self._security_headers()
+        for name, value in (extra_headers or {}).items():
+            self.send_header(name, value)
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _send_binary(self, data, status=200, content_type="application/octet-stream", extra_headers=None):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
@@ -208,6 +219,17 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/audit-logs":
                 self._send_json(api.audit_log(self._current_user_id()))
                 return
+            if path.startswith("/api/evidence-files/") and path.endswith("/download"):
+                file_id = path.split("/")[3]
+                payload = api.download_evidence_file(file_id, self._current_user_id())
+                file = payload["file"]
+                filename = quote(file["original_filename"])
+                self._send_binary(
+                    payload["data"],
+                    content_type=file["content_type"],
+                    extra_headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+                )
+                return
             if path.startswith("/api/disputes/") and path.endswith("/export"):
                 dispute_id = path.split("/")[3]
                 self._send_text(api.export_packet(dispute_id, self._current_user_id()), content_type="text/html")
@@ -217,6 +239,19 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(api.detail(dispute_id, self._current_user_id()))
                 return
             self._serve_static(path)
+        except Exception as exc:
+            self._handle_error(exc)
+
+    def do_DELETE(self):
+        path = urlparse(self.path).path
+        try:
+            self._validate_origin()
+            self._validate_csrf(path)
+            if path.startswith("/api/evidence-files/"):
+                file_id = path.split("/")[3]
+                self._send_json(api.delete_uploaded_evidence_file(file_id, self._current_user_id()))
+                return
+            self._send_json({"error": "Not found"}, status=404)
         except Exception as exc:
             self._handle_error(exc)
 

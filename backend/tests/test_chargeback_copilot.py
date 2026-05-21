@@ -260,6 +260,34 @@ class ChargebackCopilotTests(unittest.TestCase):
         exported = api.export_account_data(DEMO_USER_ID)
         self.assertIn("evidence_files", exported)
 
+    def test_evidence_file_download_and_delete_are_owner_checked(self):
+        init_db()
+        detail = api.add_evidence_upload(
+            "case_delivery_002",
+            {
+                "type": "delivery_status",
+                "title": "Carrier note",
+                "source": "Carrier website",
+                "occurred_at": "2026-05-21",
+                "summary": "Carrier says the package is still in transit.",
+            },
+            {
+                "filename": "carrier-note.txt",
+                "content_type": "text/plain",
+                "data": b"Still in transit",
+            },
+            DEMO_USER_ID,
+        )
+        file_id = next(file["id"] for file in detail["evidence_files"] if file["original_filename"] == "carrier-note.txt")
+
+        downloaded = api.download_evidence_file(file_id, DEMO_USER_ID)
+        self.assertEqual(downloaded["data"], b"Still in transit")
+        with self.assertRaises(ValueError):
+            api.download_evidence_file(file_id, "other_user")
+
+        api.delete_uploaded_evidence_file(file_id, DEMO_USER_ID)
+        self.assertFalse(any(file.id == file_id for file in list_evidence_files(DEMO_USER_ID, "case_delivery_002")))
+
     def test_upload_filename_cleanup(self):
         self.assertEqual(clean_filename("../bad name!!.pdf"), "bad name_.pdf")
         self.assertEqual(clean_filename("   "), "evidence-upload")

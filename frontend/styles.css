@@ -713,6 +713,33 @@ label {
   font-size: 13px;
 }
 
+.file-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.file-actions a,
+.text-button {
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.text-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.text-button.danger {
+  color: #a43f37;
+}
+
 .gap-add {
   margin-top: 10px;
 }

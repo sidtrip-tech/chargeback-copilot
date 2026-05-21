@@ -94,7 +94,7 @@ The stdlib server includes a few production-foundation protections:
 - JSON request body size limit through `MAX_JSON_BODY_BYTES`.
 - Browser security headers: `Content-Security-Policy`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, and `Permissions-Policy`.
 - User data export and account deletion endpoints.
-- Evidence upload type and size limits with generated storage keys.
+- Evidence upload type and size limits with generated storage keys, owner-checked downloads, and delete controls.
 
 Evidence upload note: the current Render config keeps `OBJECT_STORAGE_BACKEND=local`, which stores uploaded file bytes under `/tmp`. That is acceptable only for workflow validation because files are ephemeral. Real production should switch to S3-compatible object storage before real users upload sensitive files.
 
@@ -109,7 +109,7 @@ OBJECT_STORAGE_ACCESS_KEY_ID=...
 OBJECT_STORAGE_SECRET_ACCESS_KEY=...
 ```
 
-For S3-compatible providers outside AWS, set `OBJECT_STORAGE_ENDPOINT` to the provider endpoint. Uploaded objects are written with generated keys and server-side encryption enabled.
+For S3-compatible providers outside AWS, set `OBJECT_STORAGE_ENDPOINT` to the provider endpoint. Uploaded objects are written with generated keys and server-side encryption enabled. File downloads are proxied through authenticated app routes so the storage bucket can stay private.
 
 ## PDF-Ready Export
 

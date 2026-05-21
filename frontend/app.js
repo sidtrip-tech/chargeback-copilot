@@ -610,11 +610,22 @@ function renderEvidenceFiles(files) {
         <strong>${file.original_filename}</strong>
         <span>${file.content_type} · ${Math.round(file.size_bytes / 1024)} KB</span>
         <div class="citations">Evidence: ${file.evidence_id} · Scan: ${file.scan_status}</div>
+        <div class="file-actions">
+          <a href="/api/evidence-files/${file.id}/download" target="_blank" rel="noreferrer">Download</a>
+          <button type="button" class="text-button danger" data-delete-file="${file.id}">Delete</button>
+        </div>
       </div>
     `
         )
         .join("")
     : '<p class="empty-state">No uploaded files yet.</p>';
+}
+
+async function deleteEvidenceFile(fileId) {
+  const confirmed = window.confirm("Delete this uploaded file from the packet?");
+  if (!confirmed) return;
+  state.detail = await request(`/api/evidence-files/${fileId}`, { method: "DELETE" });
+  await loadDisputes();
 }
 
 async function createCase(event) {
@@ -733,4 +744,14 @@ function renderCategorySelection(category) {
 
 document.querySelectorAll(".category-card").forEach((card) => {
   card.addEventListener("click", () => renderCategorySelection(card.dataset.category));
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (target.matches("[data-add-gap]")) {
+    preselectEvidence(target.dataset.addGap);
+  }
+  if (target.matches("[data-delete-file]")) {
+    deleteEvidenceFile(target.dataset.deleteFile).catch((error) => showNotice(error.message));
+  }
 });

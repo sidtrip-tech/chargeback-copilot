@@ -77,7 +77,7 @@ The app now includes the first production-foundation slice:
 - Postgres store adapter path selected by `DATABASE_URL=postgresql://...`.
 - First-pass CSRF protection, origin checks, auth rate limiting, request body limits, and browser security headers.
 - User data export and account deletion controls.
-- Evidence file upload with type/size checks and file metadata.
+- Evidence file upload with type/size checks, file metadata, download, and delete controls.
 - Local/S3-compatible evidence storage adapter selected by `OBJECT_STORAGE_BACKEND`.
 - Upload scan-status support with a basic scanner mode.
 - PDF-ready HTML packet export with print styling and uploaded-file index.

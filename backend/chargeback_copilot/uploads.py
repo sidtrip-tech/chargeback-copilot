@@ -33,12 +33,32 @@ class EvidenceStorage(Protocol):
     def put(self, *, key: str, data: bytes, content_type: str) -> None:
         ...
 
+    def get(self, *, key: str) -> bytes:
+        ...
+
+    def delete(self, *, key: str) -> None:
+        ...
+
 
 class LocalEvidenceStorage:
+    def _path_for_key(self, key: str) -> Path:
+        target = (UPLOAD_ROOT / key).resolve()
+        try:
+            target.relative_to(UPLOAD_ROOT)
+        except ValueError:
+            raise ValueError("Invalid evidence file key.")
+        return target
+
     def put(self, *, key: str, data: bytes, content_type: str) -> None:
-        target = UPLOAD_ROOT / key
+        target = self._path_for_key(key)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
+
+    def get(self, *, key: str) -> bytes:
+        return self._path_for_key(key).read_bytes()
+
+    def delete(self, *, key: str) -> None:
+        self._path_for_key(key).unlink(missing_ok=True)
 
 
 class S3EvidenceStorage:
@@ -62,6 +82,13 @@ class S3EvidenceStorage:
             ContentType=content_type,
             ServerSideEncryption="AES256",
         )
+
+    def get(self, *, key: str) -> bytes:
+        response = self.client.get_object(Bucket=OBJECT_STORAGE_BUCKET, Key=key)
+        return response["Body"].read()
+
+    def delete(self, *, key: str) -> None:
+        self.client.delete_object(Bucket=OBJECT_STORAGE_BUCKET, Key=key)
 
 
 def storage_adapter() -> EvidenceStorage:
@@ -117,3 +144,11 @@ def store_evidence_file(
         extraction_status="not_configured",
         created_at=created_at,
     )
+
+
+def read_evidence_file(file: EvidenceFile) -> bytes:
+    return storage_adapter().get(key=file.storage_key)
+
+
+def remove_evidence_file(file: EvidenceFile) -> None:
+    storage_adapter().delete(key=file.storage_key)

@@ -13,7 +13,9 @@ from .planning import checklist_status, find_gaps, get_plan
 from .store import (
     create_session,
     delete_account,
+    delete_evidence_file,
     delete_session,
+    get_evidence_file,
     get_dispute,
     get_latest_packet,
     get_outcome,
@@ -36,7 +38,7 @@ from .store import (
     save_user,
 )
 from .timeline import build_timeline
-from .uploads import store_evidence_file
+from .uploads import read_evidence_file, remove_evidence_file, store_evidence_file
 from .validation import export_readiness
 
 
@@ -329,6 +331,23 @@ def add_evidence_upload(dispute_id: str, fields: Dict[str, str], file_payload: D
         {"dispute_id": dispute_id, "content_type": stored_file.content_type, "size_bytes": str(stored_file.size_bytes)},
     )
     return detail(dispute_id, user_id)
+
+
+def download_evidence_file(file_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    file = get_evidence_file(user_id, file_id)
+    if not file:
+        raise ValueError("Evidence file not found.")
+    return {"file": asdict(file), "data": read_evidence_file(file)}
+
+
+def delete_uploaded_evidence_file(file_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    file = get_evidence_file(user_id, file_id)
+    if not file:
+        raise ValueError("Evidence file not found.")
+    remove_evidence_file(file)
+    delete_evidence_file(user_id, file_id, utc_now())
+    _audit(user_id, "evidence_file.deleted", "evidence_file", file.id, {"dispute_id": file.dispute_id})
+    return detail(file.dispute_id, user_id)
 
 
 def job_status(user_id: str) -> Dict[str, Any]:

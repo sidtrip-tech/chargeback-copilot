@@ -303,6 +303,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._read_json()
                 self._send_json(api.request_email_verification(self._current_user_id()))
                 return
+            if path == "/api/auth/test-email":
+                self._read_json()
+                self._send_json(api.send_account_test_email(self._current_user_id()))
+                return
             if path == "/api/auth/verify-email":
                 body = self._read_json()
                 self._send_json(api.verify_email(body))

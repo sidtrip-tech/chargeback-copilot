@@ -152,6 +152,8 @@ SMTP_USE_TLS=true
 
 Use a transactional email provider or a verified SMTP sender. Without these values, the UI will show that email delivery is not configured.
 
+After SMTP is configured, sign in and use **Send test email** in the sidebar. That sends a harmless test message to the current account email and is the quickest way to confirm Render can reach the SMTP provider.
+
 ## PDF-Ready Export
 
 Packet export is currently PDF-ready HTML. The export page includes print styles and a **Save as PDF** button that opens the browser print dialog. This avoids adding a server-side PDF renderer before the core packet and evidence workflow stabilizes.

@@ -165,6 +165,13 @@ class ChargebackCopilotTests(unittest.TestCase):
         with self.assertRaises(PermissionError):
             api.login({"email": email, "password": "old-password"})
 
+    def test_test_email_reports_unconfigured_delivery(self):
+        init_db()
+        login = api.demo_login()
+        result = api.send_account_test_email(login["user"]["id"])
+        self.assertFalse(result["email_sent"])
+        self.assertFalse(result["email_delivery_configured"])
+
     def test_login_rejects_bad_password(self):
         init_db()
         email = f"bad-{uuid4().hex[:8]}@example.com"

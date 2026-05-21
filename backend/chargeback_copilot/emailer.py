@@ -63,3 +63,11 @@ def send_password_reset_email(to_email: str, token: str) -> bool:
         "Reset your Chargeback Copilot password",
         f"Open this link to reset your Chargeback Copilot password:\n\n{link}\n\nIf you did not request this, ignore this email.",
     )
+
+
+def send_test_email(to_email: str) -> bool:
+    return send_email(
+        to_email,
+        "Chargeback Copilot email test",
+        "This is a test email from Chargeback Copilot. If you received it, SMTP delivery is configured correctly.",
+    )

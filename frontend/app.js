@@ -91,6 +91,7 @@ function renderAccountStatus() {
     ? `${state.user.email} · email verified`
     : `${state.user.email} · email not verified`;
   $("verifyEmailBtn").classList.toggle("hidden", Boolean(state.user.email_verified) || state.emailDeliveryConfigured === false);
+  $("testEmailBtn").classList.toggle("hidden", state.emailDeliveryConfigured === false);
 }
 
 async function demoLogin() {
@@ -157,6 +158,11 @@ async function requestEmailVerification() {
   state.emailDeliveryConfigured = data.email_delivery_configured;
   renderAccountStatus();
   showNotice(data.email_sent ? "Verification email sent." : "Email delivery is not configured yet.");
+}
+
+async function sendTestEmail() {
+  const data = await request("/api/auth/test-email", { method: "POST", body: "{}" });
+  showNotice(data.email_sent ? "Test email sent to your account email." : "Email delivery is not configured yet.");
 }
 
 async function logoutToPublic() {
@@ -749,6 +755,7 @@ $("passwordResetForm").addEventListener("submit", (event) => resetPassword(event
 $("emailVerificationForm").addEventListener("submit", (event) => verifyEmail(event).catch((error) => showPublicNotice(error.message)));
 $("backToPublicBtn").addEventListener("click", () => logoutToPublic().catch((error) => showNotice(error.message)));
 $("verifyEmailBtn").addEventListener("click", () => requestEmailVerification().catch((error) => showNotice(error.message)));
+$("testEmailBtn").addEventListener("click", () => sendTestEmail().catch((error) => showNotice(error.message)));
 $("deleteAccountBtn").addEventListener("click", () => deleteAccount().catch((error) => showNotice(error.message)));
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.tab)));
 $("newCaseForm").addEventListener("submit", (event) => createCase(event).catch((error) => showNotice(error.message)));

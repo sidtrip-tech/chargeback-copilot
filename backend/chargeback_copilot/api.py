@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from .auth import DEMO_USER_ID, hash_password, new_auth_token, verify_password
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
-from .emailer import email_delivery_configured, email_health, send_password_reset_email, send_verification_email
+from .emailer import email_delivery_configured, email_health, send_password_reset_email, send_test_email, send_verification_email
 from .jobs import enqueue_job, list_jobs, run_once
 from .models import AuthToken, AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback, User
 from .packets import generate_template_packet
@@ -171,6 +171,13 @@ def request_email_verification(user_id: str) -> Dict[str, Any]:
     email_sent = send_verification_email(user.email, token.token)
     _audit(user.id, "email_verification.requested", "user", user.id, {"email_sent": str(email_sent)})
     return {"ok": True, "email_verified": False, "email_sent": email_sent, "email_delivery_configured": email_delivery_configured()}
+
+
+def send_account_test_email(user_id: str) -> Dict[str, Any]:
+    user = get_user(user_id)
+    email_sent = send_test_email(user.email)
+    _audit(user.id, "email.test_requested", "user", user.id, {"email_sent": str(email_sent)})
+    return {"ok": True, "email_sent": email_sent, "email_delivery_configured": email_delivery_configured()}
 
 
 def verify_email(payload: Dict[str, Any]) -> Dict[str, Any]:

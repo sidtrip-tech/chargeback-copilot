@@ -141,6 +141,7 @@ Current implementation status:
 - Improved export as PDF-ready HTML with print styling and uploaded-file index. Native server-side PDF generation remains a future background job.
 - Added a background job table, job status API, upload processing enqueue path, and one-shot worker script.
 - Added request IDs, structured JSON request/error logs, and an operations guide for Render log debugging.
+- Added backup/recovery guidance and operational runbooks for deploys, user errors, uploads, email, password reset, and account deletion.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export

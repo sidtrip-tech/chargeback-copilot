@@ -18,6 +18,8 @@ This is deployment-ready for a controlled production-style demo. The next produc
 6. Open the public URL and check `/api/health`.
 7. For a deeper production check, open `/api/readiness` after database and storage env vars are set.
 
+After deployment, use the checklist in [Runbooks](runbooks.md) for the production smoke test.
+
 Expected health response:
 
 ```json

@@ -59,3 +59,66 @@ After each deploy:
 5. Upload and download a small evidence file.
 6. Generate and export a packet.
 7. Send a test email if SMTP is configured.
+
+## Backup And Recovery
+
+Production data has two durable stores:
+
+- Render Postgres for accounts, packet metadata, evidence metadata, generated packets, outcomes, sessions, and audit logs.
+- S3-compatible object storage for uploaded evidence files.
+
+### Render Postgres
+
+Before real users:
+
+1. Confirm the Render Postgres plan includes automated backups.
+2. Document the backup retention window from the Render database page.
+3. Run a restore drill into a separate staging database before launch.
+4. Keep `DATABASE_URL` secret and rotate credentials after any accidental exposure.
+
+Restore drill:
+
+1. Create or restore to a separate Postgres database.
+2. Point a staging Render service at the restored database.
+3. Run `/api/readiness`.
+4. Sign in with a test account and confirm packets/evidence metadata load.
+5. Do not point production at a restored database until the restored data has been validated.
+
+### S3 Evidence Bucket
+
+Before real users:
+
+1. Keep the bucket private.
+2. Enable bucket versioning.
+3. Confirm default server-side encryption is on.
+4. Restrict the app IAM user to the one evidence bucket.
+5. Consider lifecycle rules for old object versions after the retention policy is defined.
+
+Recovery drill:
+
+1. Upload a test evidence file through the app.
+2. Confirm the object exists in S3.
+3. Download it from the app.
+4. Delete the app metadata for the file in a staging copy or use a non-production test object.
+5. Confirm object versioning can recover a prior object version if needed.
+
+### Recovery Targets
+
+For the current controlled beta, use provisional targets:
+
+- RPO: 24 hours, aligned to managed database backup cadence.
+- RTO: 4 hours for a manual restore and validation.
+
+Tighten these targets before a public launch.
+
+## Incident Notes
+
+For any production incident, capture:
+
+- start time and end time
+- affected users or flows
+- request IDs from user-facing errors
+- Render deploy ID or commit SHA
+- relevant database/storage/email provider status
+- remediation taken
+- follow-up prevention item

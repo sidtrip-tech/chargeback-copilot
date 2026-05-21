@@ -67,7 +67,7 @@ http://127.0.0.1:8010
 - Replace local auth with hosted auth, or add email verification and password reset.
 - Add hosted-auth-grade CSRF/CORS middleware or WAF/CDN protections.
 - Add secure evidence uploads and object storage.
-- Add monitoring and error tracking.
+- Add external monitoring and error tracking beyond the current request IDs and structured Render logs.
 - Add staging and production environment separation.
 - Replace the local account deletion/export flow with a reviewed privacy operations process before handling real sensitive evidence at scale.
 

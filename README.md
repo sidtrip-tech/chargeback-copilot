@@ -7,6 +7,7 @@ The first artifact in this repo is the product requirements document:
 - [Chargeback Copilot PRD](docs/chargeback-copilot-prd.md)
 - [Production Roadmap](docs/production-roadmap.md)
 - [Deployment Guide](docs/deployment.md)
+- [Operations Guide](docs/operations.md)
 
 ## Product Direction
 

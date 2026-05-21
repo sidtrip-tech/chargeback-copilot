@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 
 from chargeback_copilot.auth import CSRF_COOKIE, SESSION_COOKIE, new_csrf_token
 from chargeback_copilot import api
+from chargeback_copilot.observability import exception_summary, log_event, new_request_id, now_ms, safe_error_payload
 from chargeback_copilot.scanning import UnsafeUpload
 from chargeback_copilot.security import (
     OriginNotAllowed,
@@ -29,10 +30,12 @@ FRONTEND = ROOT / "frontend"
 class Handler(BaseHTTPRequestHandler):
     def _send_json(self, payload, status=200, extra_headers=None):
         data = json.dumps(payload).encode("utf-8")
+        self._last_response_status = status
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self._security_headers()
+        self._request_headers()
         for name, value in (extra_headers or {}).items():
             self.send_header(name, value)
         self.end_headers()
@@ -40,24 +43,57 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send_text(self, text, status=200, content_type="text/plain", extra_headers=None):
         data = text.encode("utf-8")
+        self._last_response_status = status
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self._security_headers()
+        self._request_headers()
         for name, value in (extra_headers or {}).items():
             self.send_header(name, value)
         self.end_headers()
         self.wfile.write(data)
 
     def _send_binary(self, data, status=200, content_type="application/octet-stream", extra_headers=None):
+        self._last_response_status = status
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         self._security_headers()
+        self._request_headers()
         for name, value in (extra_headers or {}).items():
             self.send_header(name, value)
         self.end_headers()
         self.wfile.write(data)
+
+    def _request_id(self):
+        if not hasattr(self, "request_id"):
+            self.request_id = self.headers.get("X-Request-ID") or new_request_id()
+        return self.request_id
+
+    def _request_headers(self):
+        self.send_header("X-Request-ID", self._request_id())
+
+    def _log_request_started(self, method, path):
+        self.request_started_at = now_ms()
+        log_event(
+            "request.started",
+            request_id=self._request_id(),
+            method=method,
+            path=path,
+            client_ip=self._client_key(),
+        )
+
+    def _log_request_completed(self, method, path, status):
+        duration_ms = now_ms() - getattr(self, "request_started_at", now_ms())
+        log_event(
+            "request.completed",
+            request_id=self._request_id(),
+            method=method,
+            path=path,
+            status=status,
+            duration_ms=duration_ms,
+        )
 
     def _read_json(self):
         length = int(self.headers.get("Content-Length", "0"))
@@ -109,7 +145,15 @@ class Handler(BaseHTTPRequestHandler):
             status = 422
         else:
             status = 400
-        self._send_json({"error": str(exc)}, status=status)
+        log_event(
+            "request.error",
+            request_id=self._request_id(),
+            status=status,
+            path=urlparse(self.path).path,
+            method=getattr(self, "command", ""),
+            **exception_summary(exc),
+        )
+        self._send_json(safe_error_payload(exc, self._request_id()), status=status)
 
     def _security_headers(self):
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -178,10 +222,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send_json_with_headers(self, payload, headers, status=200):
         data = json.dumps(payload).encode("utf-8")
+        self._last_response_status = status
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self._security_headers()
+        self._request_headers()
         for name, value in headers:
             self.send_header(name, value)
         self.end_headers()
@@ -204,6 +250,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlparse(self.path).path
+        self._log_request_started("GET", path)
         try:
             if path == "/api/health":
                 self._send_json(api.health())
@@ -251,9 +298,12 @@ class Handler(BaseHTTPRequestHandler):
             self._serve_static(path)
         except Exception as exc:
             self._handle_error(exc)
+        finally:
+            self._log_request_completed("GET", path, getattr(self, "_last_response_status", 200))
 
     def do_DELETE(self):
         path = urlparse(self.path).path
+        self._log_request_started("DELETE", path)
         try:
             self._validate_origin()
             self._validate_csrf(path)
@@ -264,9 +314,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"error": "Not found"}, status=404)
         except Exception as exc:
             self._handle_error(exc)
+        finally:
+            self._log_request_completed("DELETE", path, getattr(self, "_last_response_status", 200))
 
     def do_POST(self):
         path = urlparse(self.path).path
+        self._log_request_started("POST", path)
         try:
             self._validate_origin()
             self._validate_csrf(path)
@@ -359,6 +412,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send_json({"error": "Not found"}, status=404)
         except Exception as exc:
             self._handle_error(exc)
+        finally:
+            self._log_request_completed("POST", path, getattr(self, "_last_response_status", 200))
 
     def _serve_static(self, path):
         target = FRONTEND / ("index.html" if path == "/" else path.lstrip("/"))
@@ -367,14 +422,16 @@ class Handler(BaseHTTPRequestHandler):
             return
         data = target.read_bytes()
         self.send_response(200)
+        self._last_response_status = 200
         self.send_header("Content-Type", mimetypes.guess_type(str(target))[0] or "application/octet-stream")
         self.send_header("Content-Length", str(len(data)))
         self._security_headers()
+        self._request_headers()
         self.end_headers()
         self.wfile.write(data)
 
     def log_message(self, fmt, *args):
-        print("%s - %s" % (self.address_string(), fmt % args))
+        return
 
 
 def main():
@@ -382,7 +439,7 @@ def main():
     host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", "8010"))
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"Chargeback Copilot running at http://{host}:{port}")
+    log_event("server.started", host=host, port=port)
     server.serve_forever()
 
 

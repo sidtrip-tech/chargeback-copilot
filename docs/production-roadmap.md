@@ -140,6 +140,7 @@ Current implementation status:
 - Added upload scan-status enforcement with a basic scanner mode; managed malware scanning is still required before real sensitive uploads at scale.
 - Improved export as PDF-ready HTML with print styling and uploaded-file index. Native server-side PDF generation remains a future background job.
 - Added a background job table, job status API, upload processing enqueue path, and one-shot worker script.
+- Added request IDs, structured JSON request/error logs, and an operations guide for Render log debugging.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export

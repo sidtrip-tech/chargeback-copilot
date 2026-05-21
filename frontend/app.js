@@ -49,7 +49,11 @@ async function request(path, options = {}) {
     ...options,
   });
   const payload = await response.json();
-  if (!response.ok || payload.error) throw new Error(payload.error || "Request failed");
+  if (!response.ok || payload.error) {
+    const requestId = payload.request_id || response.headers.get("X-Request-ID");
+    const suffix = requestId ? ` (Request ID: ${requestId})` : "";
+    throw new Error(`${payload.error || "Request failed"}${suffix}`);
+  }
   return payload;
 }
 
@@ -64,7 +68,11 @@ async function requestForm(path, formData) {
     body: formData,
   });
   const payload = await response.json();
-  if (!response.ok || payload.error) throw new Error(payload.error || "Request failed");
+  if (!response.ok || payload.error) {
+    const requestId = payload.request_id || response.headers.get("X-Request-ID");
+    const suffix = requestId ? ` (Request ID: ${requestId})` : "";
+    throw new Error(`${payload.error || "Request failed"}${suffix}`);
+  }
   return payload;
 }
 

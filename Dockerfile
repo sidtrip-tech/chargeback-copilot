@@ -7,9 +7,14 @@ ENV PORT=8010
 
 WORKDIR /app
 
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY backend ./backend
 COPY frontend ./frontend
 COPY docs ./docs
+COPY db ./db
+COPY scripts ./scripts
 COPY README.md package.json ./
 
 EXPOSE 8010

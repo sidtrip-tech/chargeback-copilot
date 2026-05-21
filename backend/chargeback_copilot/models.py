@@ -39,6 +39,22 @@ class EvidenceArtifact:
 
 
 @dataclass(frozen=True)
+class EvidenceFile:
+    id: str
+    evidence_id: str
+    dispute_id: str
+    owner_id: str
+    original_filename: str
+    content_type: str
+    size_bytes: int
+    storage_bucket: str
+    storage_key: str
+    scan_status: str
+    extraction_status: str
+    created_at: str
+
+
+@dataclass(frozen=True)
 class EvidenceRequirement:
     key: str
     label: str
@@ -119,3 +135,17 @@ class AuditLog:
     entity_id: str
     created_at: str
     metadata: Dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class BackgroundJob:
+    id: str
+    owner_id: str
+    job_type: str
+    status: str
+    attempts: int
+    payload: Dict[str, str]
+    last_error: str
+    run_after: str
+    created_at: str
+    updated_at: str

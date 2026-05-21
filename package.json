@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "python3 backend/server.py",
     "start": "python3 backend/server.py",
+    "db:migrate": "python3 scripts/migrate_db.py",
+    "db:smoke:postgres": "python3 scripts/postgres_smoke.py",
+    "jobs:run": "python3 scripts/run_jobs.py",
     "test": "python3 -m unittest discover backend/tests",
     "check": "python3 -m unittest discover backend/tests && node --check frontend/app.js"
   }

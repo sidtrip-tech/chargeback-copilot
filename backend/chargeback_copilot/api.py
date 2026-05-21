@@ -4,30 +4,39 @@ from html import escape
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from .auth import DEMO_USER_ID
+from .auth import DEMO_USER_ID, hash_password, verify_password
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
-from .models import AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback
+from .jobs import enqueue_job, list_jobs, run_once
+from .models import AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback, User
 from .packets import generate_template_packet
 from .planning import checklist_status, find_gaps, get_plan
 from .store import (
     create_session,
+    delete_account,
     delete_session,
     get_dispute,
     get_latest_packet,
     get_outcome,
     get_session_user,
     get_user,
+    get_user_by_email,
     init_db,
     list_audit_logs,
     list_disputes,
     list_evidence,
+    list_evidence_files,
+    list_outcomes,
+    list_packets,
     save_audit_log,
     save_dispute,
     save_evidence,
+    save_evidence_file,
     save_outcome,
     save_packet,
+    save_user,
 )
 from .timeline import build_timeline
+from .uploads import store_evidence_file
 from .validation import export_readiness
 
 
@@ -52,25 +61,107 @@ def health() -> Dict[str, Any]:
     }
 
 
+def run_jobs() -> Dict[str, Any]:
+    completed = run_once(utc_now())
+    return {"completed": [asdict(job) for job in completed]}
+
+
+def _public_user(user: User) -> Dict[str, str]:
+    return {"id": user.id, "email": user.email, "name": user.name}
+
+
+def _auth_response(user: User) -> Dict[str, Any]:
+    token = create_session(user.id, utc_now(), _session_expiry())
+    return {"token": token, "user": _public_user(user)}
+
+
+def _clean_email(email: str) -> str:
+    return email.strip().lower()
+
+
+def signup(payload: Dict[str, Any]) -> Dict[str, Any]:
+    email = _clean_email(payload.get("email", ""))
+    name = payload.get("name", "").strip()
+    password = payload.get("password", "")
+    if "@" not in email or "." not in email:
+        raise ValueError("Enter a valid email address.")
+    if len(name) < 2:
+        raise ValueError("Enter your name.")
+    if len(password) < 8:
+        raise ValueError("Use a password with at least 8 characters.")
+    if get_user_by_email(email):
+        raise ValueError("An account already exists for this email.")
+
+    user = User(
+        id=f"user_{uuid4().hex[:12]}",
+        email=email,
+        name=name,
+        password_hash=hash_password(password),
+        created_at=utc_now(),
+    )
+    save_user(user)
+    _audit(user.id, "account.created", "user", user.id, {"auth_provider": "local"})
+    return _auth_response(user)
+
+
+def login(payload: Dict[str, Any]) -> Dict[str, Any]:
+    email = _clean_email(payload.get("email", ""))
+    password = payload.get("password", "")
+    user = get_user_by_email(email)
+    if not user or not verify_password(password, user.password_hash):
+        raise PermissionError("Email or password is incorrect.")
+    return _auth_response(user)
+
+
 def demo_login() -> Dict[str, Any]:
     user = get_user(DEMO_USER_ID)
-    token = create_session(user.id, utc_now(), _session_expiry())
-    return {
-        "token": token,
-        "user": {"id": user.id, "email": user.email, "name": user.name},
-    }
+    return _auth_response(user)
 
 
 def current_user(token: str) -> Dict[str, Any]:
     user = get_session_user(token, utc_now())
     if not user:
         raise PermissionError("Sign in to continue.")
-    return {"id": user.id, "email": user.email, "name": user.name}
+    return _public_user(user)
 
 
 def logout(token: str) -> Dict[str, Any]:
     if token:
         delete_session(token)
+    return {"ok": True}
+
+
+def export_account_data(user_id: str) -> Dict[str, Any]:
+    user = get_user(user_id)
+    disputes = list_disputes(user_id)
+    evidence = []
+    for dispute in disputes:
+        evidence.extend(list_evidence(dispute.id, user_id))
+    evidence_files = list_evidence_files(user_id)
+    packets = list_packets(user_id)
+    outcomes = list_outcomes(user_id)
+    audit_logs = list_audit_logs(user_id)
+    _audit(user_id, "account.exported", "user", user_id)
+    return {
+        "exported_at": utc_now(),
+        "user": _public_user(user),
+        "disputes": [asdict(item) for item in disputes],
+        "evidence": [asdict(item) for item in evidence],
+        "evidence_files": [asdict(item) for item in evidence_files],
+        "packets": [asdict(item) for item in packets],
+        "outcomes": [asdict(item) for item in outcomes],
+        "audit_logs": [asdict(item) for item in audit_logs],
+    }
+
+
+def delete_account_data(user_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    if user_id == DEMO_USER_ID:
+        raise ValueError("The shared demo account cannot be deleted.")
+    confirmation = payload.get("confirmation", "")
+    if confirmation != "DELETE":
+        raise ValueError("Type DELETE to confirm account deletion.")
+    _audit(user_id, "account.deleted", "user", user_id)
+    delete_account(user_id)
     return {"ok": True}
 
 
@@ -126,6 +217,7 @@ def list_cases(user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
 def detail(dispute_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
     dispute = get_dispute(dispute_id, user_id)
     artifacts = list_evidence(dispute_id, user_id)
+    files = list_evidence_files(user_id, dispute_id)
     plan = get_plan(dispute.category)
     checklist = checklist_status(plan, artifacts)
     gaps = find_gaps(plan, artifacts)
@@ -148,6 +240,7 @@ def detail(dispute_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
             "checklist": checklist,
         },
         "evidence": [asdict(item) for item in artifacts],
+        "evidence_files": [asdict(item) for item in files],
         "timeline": [asdict(item) for item in build_timeline(artifacts)],
         "evidence_gaps": [asdict(gap) for gap in gaps],
         "packet": asdict(packet) if packet else None,
@@ -194,6 +287,52 @@ def add_evidence(dispute_id: str, payload: Dict[str, Any], user_id: str = DEMO_U
     save_evidence(evidence, user_id)
     _audit(user_id, "evidence.created", "evidence", evidence.id, {"dispute_id": dispute_id, "type": evidence.type})
     return detail(dispute_id, user_id)
+
+
+def add_evidence_upload(dispute_id: str, fields: Dict[str, str], file_payload: Dict[str, Any], user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    get_dispute(dispute_id, user_id)
+    evidence_id = f"ev_{uuid4().hex[:10]}"
+    created_at = utc_now()
+    evidence = EvidenceArtifact(
+        id=evidence_id,
+        dispute_id=dispute_id,
+        type=fields["type"],
+        title=fields["title"].strip(),
+        source=fields.get("source", "Uploaded file").strip() or "Uploaded file",
+        occurred_at=fields["occurred_at"],
+        summary=fields["summary"].strip(),
+        relevance=fields.get("relevance", "relevant"),
+        metadata={"input_mode": "file_upload"},
+    )
+    stored_file = store_evidence_file(
+        evidence_id=evidence_id,
+        dispute_id=dispute_id,
+        owner_id=user_id,
+        filename=file_payload["filename"],
+        content_type=file_payload["content_type"],
+        data=file_payload["data"],
+        created_at=created_at,
+    )
+    save_evidence(evidence, user_id)
+    save_evidence_file(stored_file)
+    enqueue_job(
+        user_id,
+        "evidence_file.post_upload_processing",
+        {"file_id": stored_file.id, "evidence_id": evidence_id, "dispute_id": dispute_id},
+        utc_now(),
+    )
+    _audit(
+        user_id,
+        "evidence_file.uploaded",
+        "evidence_file",
+        stored_file.id,
+        {"dispute_id": dispute_id, "content_type": stored_file.content_type, "size_bytes": str(stored_file.size_bytes)},
+    )
+    return detail(dispute_id, user_id)
+
+
+def job_status(user_id: str) -> Dict[str, Any]:
+    return list_jobs(user_id)
 
 
 def generate_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
@@ -247,39 +386,81 @@ def export_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> str:
         f"<li><strong>{escape(item['id'])}</strong>: {escape(item['title'])} ({escape(item['source'])})</li>"
         for item in data["evidence"]
     )
+    file_index = "\n".join(
+        f"<li><strong>{escape(item['id'])}</strong>: {escape(item['original_filename'])} ({escape(item['content_type'])}, {item['size_bytes'] / 1024:,.1f} KB)<br><small>Evidence: {escape(item['evidence_id'])}; Scan: {escape(item['scan_status'])}</small></li>"
+        for item in data.get("evidence_files", [])
+    )
     next_steps = "\n".join(f"<li>{escape(step)}</li>" for step in packet["next_steps"])
     return f"""<!doctype html>
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{escape(packet['title'])}</title>
   <style>
-    body {{ font-family: Arial, sans-serif; color: #14213d; margin: 40px; line-height: 1.55; }}
-    h1, h2 {{ color: #123047; }}
+    :root {{ color-scheme: light; }}
+    body {{ font-family: Arial, sans-serif; color: #14213d; margin: 0; line-height: 1.55; background: #eef3f8; }}
+    main {{ max-width: 840px; margin: 0 auto; background: white; min-height: 100vh; padding: 44px; }}
+    h1, h2 {{ color: #123047; line-height: 1.2; }}
+    h1 {{ margin-top: 0; }}
+    h2 {{ border-top: 1px solid #d9e2ec; padding-top: 18px; margin-top: 28px; page-break-after: avoid; }}
+    li {{ margin-bottom: 10px; }}
     small {{ color: #5f6f82; }}
     .box {{ border: 1px solid #d9e2ec; border-radius: 6px; padding: 14px; }}
+    .toolbar {{ display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 28px; padding: 12px 14px; border: 1px solid #cfe0ea; background: #f7fbfe; border-radius: 6px; }}
+    .toolbar p {{ margin: 0; color: #526177; font-size: 13px; }}
+    button {{ border: 1px solid #0b7285; border-radius: 6px; background: #0b7285; color: white; padding: 8px 12px; cursor: pointer; }}
+    .section {{ page-break-inside: avoid; }}
+    .disclaimer {{ margin-top: 28px; border-top: 1px solid #d9e2ec; padding-top: 12px; }}
+    @page {{ margin: 0.6in; }}
+    @media print {{
+      body {{ background: white; }}
+      main {{ max-width: none; padding: 0; }}
+      .toolbar {{ display: none; }}
+      a {{ color: inherit; text-decoration: none; }}
+    }}
   </style>
 </head>
 <body>
-  <h1>{escape(packet['title'])}</h1>
-  <div class="box">
-    <p><strong>Merchant:</strong> {escape(dispute['merchant_name'])}</p>
-    <p><strong>Amount:</strong> {escape(dispute['currency'])} {dispute['amount'] / 100:,.2f}</p>
-    <p><strong>Charge date:</strong> {escape(dispute['charge_date'])}</p>
-    <p><strong>Issuer:</strong> {escape(dispute['issuer_name'])}</p>
-    <p><strong>Category:</strong> {escape(data['plan']['label'])}</p>
-  </div>
-  <h2>Suggested Bank Message</h2>
-  <p>{escape(packet['suggested_bank_message'])}</p>
-  <h2>Cited Claims</h2>
-  <ol>{claims}</ol>
-  <h2>Timeline</h2>
-  <ol>{timeline}</ol>
-  <h2>Evidence Index</h2>
-  <ol>{evidence_index}</ol>
-  <h2>Next Steps</h2>
-  <ol>{next_steps}</ol>
-  <p><small>{escape(packet['disclaimer'])}</small></p>
+  <main>
+    <div class="toolbar">
+      <p>PDF-ready export. Use your browser print dialog and choose Save as PDF.</p>
+      <button onclick="window.print()">Save as PDF</button>
+    </div>
+    <h1>{escape(packet['title'])}</h1>
+    <div class="box section">
+      <p><strong>Merchant:</strong> {escape(dispute['merchant_name'])}</p>
+      <p><strong>Amount:</strong> {escape(dispute['currency'])} {dispute['amount'] / 100:,.2f}</p>
+      <p><strong>Charge date:</strong> {escape(dispute['charge_date'])}</p>
+      <p><strong>Issuer:</strong> {escape(dispute['issuer_name'])}</p>
+      <p><strong>Category:</strong> {escape(data['plan']['label'])}</p>
+    </div>
+    <section class="section">
+      <h2>Suggested Bank Message</h2>
+      <p>{escape(packet['suggested_bank_message'])}</p>
+    </section>
+    <section>
+      <h2>Cited Claims</h2>
+      <ol>{claims}</ol>
+    </section>
+    <section>
+      <h2>Timeline</h2>
+      <ol>{timeline}</ol>
+    </section>
+    <section>
+      <h2>Evidence Index</h2>
+      <ol>{evidence_index}</ol>
+    </section>
+    <section>
+      <h2>Uploaded File Index</h2>
+      <ol>{file_index or "<li>No uploaded files attached.</li>"}</ol>
+    </section>
+    <section>
+      <h2>Next Steps</h2>
+      <ol>{next_steps}</ol>
+    </section>
+    <p class="disclaimer"><small>{escape(packet['disclaimer'])}</small></p>
+  </main>
 </body>
 </html>"""
 

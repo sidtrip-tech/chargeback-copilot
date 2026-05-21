@@ -253,6 +253,36 @@ button.ghost {
   color: #39465a;
 }
 
+.auth-section {
+  padding-bottom: 64px;
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.auth-card h3 {
+  margin: 0 0 4px;
+}
+
+.auth-card .subtle-button {
+  width: auto;
+  justify-content: center;
+  background: white;
+  color: var(--accent-dark);
+  border-color: var(--line);
+}
+
 .private-app {
   min-height: 100vh;
   display: grid;
@@ -278,6 +308,21 @@ button.ghost {
   background: #1f2937;
   border-color: #334155;
   color: white;
+}
+
+.account-actions {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.account-actions .subtle-button {
+  text-decoration: none;
+}
+
+.danger-action {
+  border-color: #7f1d1d;
+  color: #fecaca;
 }
 
 .tab.active {
@@ -649,11 +694,23 @@ label {
 .gap-item,
 .event,
 .claim,
+.file-item,
 .step {
   border: 1px solid #e4eaf1;
   border-radius: 6px;
   padding: 12px;
   margin-bottom: 10px;
+}
+
+.file-item strong,
+.file-item span {
+  display: block;
+}
+
+.file-item span {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .gap-add {
@@ -775,6 +832,7 @@ label {
   .form-grid,
   .summary-cards,
   .info-grid,
+  .auth-grid,
   .category-cards,
   .completed-grid {
     grid-template-columns: 1fr;

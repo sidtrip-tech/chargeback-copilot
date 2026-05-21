@@ -16,7 +16,7 @@
             <p>Prepare your card dispute packet</p>
           </div>
         </div>
-        <button class="loginCta">Demo login</button>
+        <button class="loginCta">Sign in</button>
       </header>
 
       <main>
@@ -87,6 +87,31 @@
             <span>Charge not recognized</span>
           </div>
         </section>
+
+        <section id="authPanel" class="public-section auth-section">
+          <div class="section-heading">
+            <p class="eyebrow">Private workspace</p>
+            <h2>Create an account or sign in.</h2>
+            <p class="muted">Your packets stay tied to your account session. Demo login is still available for product testing.</p>
+          </div>
+          <div id="publicNotice" class="notice hidden"></div>
+          <div class="auth-grid">
+            <form id="signupForm" class="auth-card stack-form">
+              <h3>Create account</h3>
+              <label>Name<input name="name" required autocomplete="name" placeholder="Jane Doe" /></label>
+              <label>Email<input name="email" required type="email" autocomplete="email" placeholder="jane@example.com" /></label>
+              <label>Password<input name="password" required type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" /></label>
+              <button type="submit">Create account</button>
+            </form>
+            <form id="signinForm" class="auth-card stack-form">
+              <h3>Sign in</h3>
+              <label>Email<input name="email" required type="email" autocomplete="email" placeholder="jane@example.com" /></label>
+              <label>Password<input name="password" required type="password" autocomplete="current-password" /></label>
+              <button type="submit">Sign in</button>
+              <button id="demoLoginBtn" class="subtle-button" type="button">Use demo account</button>
+            </form>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -104,8 +129,12 @@
           <button class="tab" data-tab="completed">Completed</button>
           <button class="tab" data-tab="start_new">Start New Packet</button>
         </nav>
-        <button id="backToPublicBtn" class="subtle-button">Public page</button>
-        <p class="demo-note">Local demo account with a session cookie. Hosted auth comes next.</p>
+        <div class="account-actions">
+          <a id="exportDataBtn" class="subtle-button" href="/api/account/export" target="_blank" rel="noreferrer">Export my data</a>
+          <button id="deleteAccountBtn" class="subtle-button danger-action" type="button">Delete account</button>
+        </div>
+        <button id="backToPublicBtn" class="subtle-button">Sign out</button>
+        <p class="demo-note">Account sessions are active. Hosted auth and email verification come next.</p>
       </aside>
 
       <main class="workspace">
@@ -116,7 +145,7 @@
           </div>
           <div class="topbar-actions">
             <button id="generateBtn">Generate packet</button>
-            <a id="exportBtn" class="button ghost disabled" href="#" target="_blank" rel="noreferrer">Export</a>
+            <a id="exportBtn" class="button ghost disabled" href="#" target="_blank" rel="noreferrer">Export / Save PDF</a>
           </div>
         </section>
 
@@ -196,7 +225,7 @@
                 </div>
                 <div class="completed-actions">
                   <span class="pill">Ready to export</span>
-                  <a id="completedExportBtn" class="button" href="#" target="_blank" rel="noreferrer">Export packet</a>
+                  <a id="completedExportBtn" class="button" href="#" target="_blank" rel="noreferrer">Export / Save PDF</a>
                 </div>
               </div>
 
@@ -265,6 +294,7 @@
                     <label>Source<input name="source" placeholder="Example: Gmail, Chase app, support chat" /></label>
                     <label>Date<input name="occurred_at" required type="date" /></label>
                     <label>Summary<textarea name="summary" rows="4" required placeholder="State only what this evidence shows."></textarea></label>
+                    <label>Attach file optional<input name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.eml" /></label>
                     <button type="submit">Add evidence</button>
                   </form>
                 </div>

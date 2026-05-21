@@ -68,19 +68,29 @@ PORT=8011 python3 backend/server.py
 The app now includes the first production-foundation slice:
 
 - Local demo session endpoint with an HttpOnly session cookie.
+- Email/password account creation and sign-in for the local production foundation.
 - Protected packet APIs that require a session.
 - User-owned packet, evidence, generated packet, and outcome rows.
 - Audit-log storage for key workflow events.
 - Configurable local server host and port through `HOST` and `PORT`.
+- Initial production Postgres schema in `db/migrations/001_initial_postgres_schema.sql`.
+- Postgres store adapter path selected by `DATABASE_URL=postgresql://...`.
+- First-pass CSRF protection, origin checks, auth rate limiting, request body limits, and browser security headers.
+- User data export and account deletion controls.
+- Evidence file upload with type/size checks and file metadata.
+- Local/S3-compatible evidence storage adapter selected by `OBJECT_STORAGE_BACKEND`.
+- Upload scan-status support with a basic scanner mode.
+- PDF-ready HTML packet export with print styling and uploaded-file index.
+- Background job foundation with upload processing jobs and one-shot worker script.
 
-This is not yet full production auth. Hosted auth, Postgres, migrations, secure uploads, and deployment hardening are tracked in the production roadmap.
+This is not yet full production identity. Hosted auth, email verification, password reset, secure uploads, and deployment hardening are tracked in the production roadmap.
 
 ## First Hosted Deploy
 
 The repo includes deployment scaffolding for a controlled hosted demo:
 
 - `Dockerfile` for containerized deploys.
-- `render.yaml` for Render Blueprint deploys with a persistent SQLite disk.
+- `render.yaml` for Render Blueprint deploys with a managed Postgres database.
 - `/api/health` for platform health checks.
 - GitHub Actions CI in `.github/workflows/ci.yml`.
 
@@ -90,6 +100,20 @@ See the [Deployment Guide](docs/deployment.md) for the exact steps.
 
 ```bash
 python3 -m unittest discover backend/tests
+```
+
+## Database Commands
+
+Apply local or Postgres migrations:
+
+```bash
+DATABASE_URL=sqlite:///backend/chargeback_copilot.db python3 scripts/migrate_db.py
+```
+
+Run the staging Postgres smoke check:
+
+```bash
+DATABASE_URL="postgresql://..." SEED_DEMO_DATA=true python3 scripts/postgres_smoke.py
 ```
 
 ## Safety Boundaries

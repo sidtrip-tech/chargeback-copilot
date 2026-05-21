@@ -11,6 +11,14 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
+function readCookie(name) {
+  return document.cookie
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => item.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || "";
+}
+
 function money(cents, currency) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 }
@@ -21,9 +29,21 @@ function showNotice(message) {
   notice.classList.toggle("hidden", !message);
 }
 
+function showPublicNotice(message) {
+  const notice = $("publicNotice");
+  notice.textContent = message || "";
+  notice.classList.toggle("hidden", !message);
+}
+
 async function request(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const csrfToken = readCookie("chargeback_copilot_csrf");
+  if (!["GET", "HEAD", "OPTIONS"].includes(method) && csrfToken) {
+    headers["X-CSRF-Token"] = decodeURIComponent(csrfToken);
+  }
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     credentials: "same-origin",
     ...options,
   });
@@ -32,13 +52,56 @@ async function request(path, options = {}) {
   return payload;
 }
 
-async function login() {
-  const data = await request("/api/auth/demo", { method: "POST", body: "{}" });
+async function requestForm(path, formData) {
+  const csrfToken = readCookie("chargeback_copilot_csrf");
+  const headers = {};
+  if (csrfToken) headers["X-CSRF-Token"] = decodeURIComponent(csrfToken);
+  const response = await fetch(path, {
+    method: "POST",
+    headers,
+    credentials: "same-origin",
+    body: formData,
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.error) throw new Error(payload.error || "Request failed");
+  return payload;
+}
+
+function showAuthPanel() {
+  $("authPanel").scrollIntoView({ behavior: "smooth", block: "start" });
+  const email = document.querySelector('#signinForm input[name="email"]');
+  if (email) email.focus({ preventScroll: true });
+}
+
+async function enterPrivate(data) {
   state.authenticated = true;
   state.user = data.user;
   $("publicPage").classList.add("hidden");
   $("privateApp").classList.remove("hidden");
+  showPublicNotice("");
   loadDisputes().catch((error) => showNotice(error.message));
+}
+
+async function demoLogin() {
+  const data = await request("/api/auth/demo", { method: "POST", body: "{}" });
+  await enterPrivate(data);
+}
+
+async function signup(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const body = Object.fromEntries(form.entries());
+  const data = await request("/api/auth/signup", { method: "POST", body: JSON.stringify(body) });
+  event.currentTarget.reset();
+  await enterPrivate(data);
+}
+
+async function signin(event) {
+  event.preventDefault();
+  const form = new FormData(event.currentTarget);
+  const body = Object.fromEntries(form.entries());
+  const data = await request("/api/auth/login", { method: "POST", body: JSON.stringify(body) });
+  await enterPrivate(data);
 }
 
 async function logoutToPublic() {
@@ -47,6 +110,27 @@ async function logoutToPublic() {
   state.user = null;
   $("privateApp").classList.add("hidden");
   $("publicPage").classList.remove("hidden");
+}
+
+async function deleteAccount() {
+  const confirmed = window.prompt("Type DELETE to permanently delete this account and its packets.");
+  if (confirmed !== "DELETE") {
+    showNotice("Account deletion canceled.");
+    return;
+  }
+  await request("/api/account/delete", {
+    method: "POST",
+    body: JSON.stringify({ confirmation: confirmed }),
+  });
+  state.authenticated = false;
+  state.user = null;
+  state.disputes = [];
+  state.summary = null;
+  state.activeId = null;
+  state.detail = null;
+  $("privateApp").classList.add("hidden");
+  $("publicPage").classList.remove("hidden");
+  showPublicNotice("Your account and stored packet data were deleted.");
 }
 
 async function loadDisputes() {
@@ -291,6 +375,10 @@ function renderCompletedDetail(detail) {
       ${renderTimelineList(detail.timeline)}
     </details>
     <details>
+      <summary>View uploaded files</summary>
+      ${renderEvidenceFiles(detail.evidence_files || [])}
+    </details>
+    <details>
       <summary>View evidence checklist</summary>
       ${renderChecklistList(detail.plan.checklist)}
     </details>
@@ -394,6 +482,10 @@ function renderPrepReview(detail) {
     <details>
       <summary>View evidence timeline</summary>
       ${renderTimelineList(detail.timeline)}
+    </details>
+    <details>
+      <summary>View uploaded files</summary>
+      ${renderEvidenceFiles(detail.evidence_files || [])}
     </details>
     <details>
       <summary>View category guidance</summary>
@@ -506,6 +598,22 @@ function renderClaimList(packet) {
     .join("") || '<p class="empty-state">No supported claims yet.</p>';
 }
 
+function renderEvidenceFiles(files) {
+  return files.length
+    ? files
+        .map(
+          (file) => `
+      <div class="file-item">
+        <strong>${file.original_filename}</strong>
+        <span>${file.content_type} · ${Math.round(file.size_bytes / 1024)} KB</span>
+        <div class="citations">Evidence: ${file.evidence_id} · Scan: ${file.scan_status}</div>
+      </div>
+    `
+        )
+        .join("")
+    : '<p class="empty-state">No uploaded files yet.</p>';
+}
+
 async function createCase(event) {
   event.preventDefault();
   if (!state.selectedStartCategory) {
@@ -530,11 +638,17 @@ async function addEvidence(event) {
   event.preventDefault();
   const formEl = event.currentTarget;
   const form = new FormData(formEl);
-  const body = Object.fromEntries(form.entries());
-  state.detail = await request(`/api/disputes/${state.activeId}/evidence`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
+  const file = form.get("file");
+  if (file && file.size > 0) {
+    state.detail = await requestForm(`/api/disputes/${state.activeId}/evidence-file`, form);
+  } else {
+    form.delete("file");
+    const body = Object.fromEntries(form.entries());
+    state.detail = await request(`/api/disputes/${state.activeId}/evidence`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
   formEl.reset();
   await loadDisputes();
 }
@@ -560,10 +674,12 @@ async function saveOutcome(event) {
   await loadDisputes();
 }
 
-document.querySelectorAll(".loginCta").forEach((button) => {
-  button.addEventListener("click", () => login().catch((error) => showNotice(error.message)));
-});
+document.querySelectorAll(".loginCta").forEach((button) => button.addEventListener("click", showAuthPanel));
+$("demoLoginBtn").addEventListener("click", () => demoLogin().catch((error) => showPublicNotice(error.message)));
+$("signupForm").addEventListener("submit", (event) => signup(event).catch((error) => showPublicNotice(error.message)));
+$("signinForm").addEventListener("submit", (event) => signin(event).catch((error) => showPublicNotice(error.message)));
 $("backToPublicBtn").addEventListener("click", () => logoutToPublic().catch((error) => showNotice(error.message)));
+$("deleteAccountBtn").addEventListener("click", () => deleteAccount().catch((error) => showNotice(error.message)));
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.tab)));
 $("newCaseForm").addEventListener("submit", (event) => createCase(event).catch((error) => showNotice(error.message)));
 $("evidenceForm").addEventListener("submit", (event) => addEvidence(event).catch((error) => showNotice(error.message)));

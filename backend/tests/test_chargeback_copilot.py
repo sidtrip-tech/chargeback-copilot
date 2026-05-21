@@ -1,5 +1,6 @@
 import sys
 import unittest
+from uuid import uuid4
 from pathlib import Path
 
 
@@ -13,7 +14,28 @@ from chargeback_copilot.dashboard import derived_status, evidence_progress, read
 from chargeback_copilot.packets import generate_template_packet
 from chargeback_copilot.planning import checklist_status, find_gaps, get_plan
 from chargeback_copilot.seed_data import DISPUTES, EVIDENCE
-from chargeback_copilot.store import get_outcome, init_db, list_disputes, save_dispute, save_outcome
+from chargeback_copilot.security import (
+    OriginNotAllowed,
+    PayloadTooLarge,
+    RateLimitExceeded,
+    check_json_body_size,
+    check_origin,
+    check_rate_limit,
+    is_allowed_origin,
+    parse_allowed_origins,
+    reset_rate_limits,
+)
+from chargeback_copilot.scanning import EICAR_SIGNATURE, UnsafeUpload, scan_upload
+from chargeback_copilot.uploads import clean_filename
+from chargeback_copilot.store import (
+    get_outcome,
+    get_user_by_email,
+    init_db,
+    list_disputes,
+    list_evidence_files,
+    save_dispute,
+    save_outcome,
+)
 from chargeback_copilot.models import ConsumerDispute, OutcomeFeedback
 from chargeback_copilot.timeline import build_timeline
 from chargeback_copilot.validation import export_readiness, validate_claims
@@ -112,6 +134,45 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(current["id"], DEMO_USER_ID)
         self.assertEqual(current["email"], "demo@chargebackcopilot.local")
 
+    def test_signup_and_login_create_user_session(self):
+        init_db()
+        email = f"test-{uuid4().hex[:8]}@example.com"
+        signup = api.signup({"name": "Test User", "email": email, "password": "secure-test-password"})
+        self.assertEqual(signup["user"]["email"], email)
+
+        login = api.login({"email": email, "password": "secure-test-password"})
+        current = api.current_user(login["token"])
+        self.assertEqual(current["email"], email)
+
+    def test_login_rejects_bad_password(self):
+        init_db()
+        email = f"bad-{uuid4().hex[:8]}@example.com"
+        api.signup({"name": "Bad Password", "email": email, "password": "secure-test-password"})
+        with self.assertRaises(PermissionError):
+            api.login({"email": email, "password": "wrong-password"})
+
+    def test_rate_limit_blocks_repeated_auth_attempts(self):
+        reset_rate_limits()
+        for index in range(10):
+            check_rate_limit("127.0.0.1", "auth", now=float(index))
+        with self.assertRaises(RateLimitExceeded):
+            check_rate_limit("127.0.0.1", "auth", now=10.0)
+        check_rate_limit("127.0.0.1", "auth", now=70.0)
+
+    def test_json_body_size_limit(self):
+        check_json_body_size(1024)
+        with self.assertRaises(PayloadTooLarge):
+            check_json_body_size(65537)
+
+    def test_origin_allowlist(self):
+        configured = parse_allowed_origins("https://app.example.com, http://localhost:8010/")
+        self.assertTrue(is_allowed_origin("", "127.0.0.1:8010", "http", configured))
+        self.assertTrue(is_allowed_origin("https://app.example.com", "service.onrender.com", "https", configured))
+        self.assertTrue(is_allowed_origin("https://service.onrender.com", "service.onrender.com", "https", configured))
+        self.assertFalse(is_allowed_origin("https://evil.example", "service.onrender.com", "https", configured))
+        with self.assertRaises(OriginNotAllowed):
+            check_origin("https://evil.example", "service.onrender.com", "https")
+
     def test_health_check(self):
         payload = api.health()
         self.assertTrue(payload["ok"])
@@ -140,6 +201,80 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertIn(other_dispute.id, other_ids)
         with self.assertRaises(KeyError):
             api.detail(other_dispute.id, DEMO_USER_ID)
+
+    def test_account_export_and_delete(self):
+        init_db()
+        email = f"delete-{uuid4().hex[:8]}@example.com"
+        signup = api.signup({"name": "Delete Me", "email": email, "password": "secure-test-password"})
+        user_id = signup["user"]["id"]
+        api.create_dispute(
+            {
+                "merchant_name": "Delete Test Merchant",
+                "amount": "10.00",
+                "charge_date": "2026-05-21",
+                "issuer_name": "Test Bank",
+                "category": "not_received",
+                "user_summary": "Delete account test.",
+            },
+            user_id,
+        )
+
+        exported = api.export_account_data(user_id)
+        self.assertEqual(exported["user"]["email"], email)
+        self.assertEqual(len(exported["disputes"]), 1)
+        self.assertNotIn("password_hash", exported["user"])
+
+        api.delete_account_data(user_id, {"confirmation": "DELETE"})
+        self.assertIsNone(get_user_by_email(email))
+        self.assertEqual(list_disputes(user_id), [])
+
+    def test_demo_account_cannot_be_deleted(self):
+        init_db()
+        with self.assertRaises(ValueError):
+            api.delete_account_data(DEMO_USER_ID, {"confirmation": "DELETE"})
+
+    def test_evidence_file_upload_creates_metadata(self):
+        init_db()
+        api.add_evidence_upload(
+            "case_delivery_002",
+            {
+                "type": "delivery_status",
+                "title": "Tracking screenshot",
+                "source": "Carrier website",
+                "occurred_at": "2026-05-21",
+                "summary": "Tracking page shows no delivery scan.",
+            },
+            {
+                "filename": "tracking.txt",
+                "content_type": "text/plain",
+                "data": b"No delivery scan",
+            },
+            DEMO_USER_ID,
+        )
+        files = list_evidence_files(DEMO_USER_ID, "case_delivery_002")
+        self.assertTrue(any(file.original_filename == "tracking.txt" for file in files))
+        jobs = api.job_status(DEMO_USER_ID)["jobs"]
+        self.assertTrue(any(job["job_type"] == "evidence_file.post_upload_processing" for job in jobs))
+        completed = api.run_jobs()["completed"]
+        self.assertTrue(any(job["status"] == "completed" for job in completed))
+        exported = api.export_account_data(DEMO_USER_ID)
+        self.assertIn("evidence_files", exported)
+
+    def test_upload_filename_cleanup(self):
+        self.assertEqual(clean_filename("../bad name!!.pdf"), "bad name_.pdf")
+        self.assertEqual(clean_filename("   "), "evidence-upload")
+
+    def test_basic_upload_scanner_can_block_eicar_signature(self):
+        import chargeback_copilot.scanning as scanning
+
+        original_enabled = scanning.VIRUS_SCAN_ENABLED
+        try:
+            scanning.VIRUS_SCAN_ENABLED = True
+            self.assertEqual(scan_upload(b"ordinary receipt text"), "clean")
+            with self.assertRaises(UnsafeUpload):
+                scan_upload(b"prefix " + EICAR_SIGNATURE + b" suffix")
+        finally:
+            scanning.VIRUS_SCAN_ENABLED = original_enabled
 
 
 if __name__ == "__main__":

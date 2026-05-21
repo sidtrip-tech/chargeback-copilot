@@ -1,13 +1,15 @@
+databases:
+  - name: chargeback-copilot-db
+    plan: basic-256mb
+    databaseName: chargeback_copilot
+    postgresMajorVersion: "17"
+
 services:
   - type: web
     name: chargeback-copilot
     runtime: docker
     plan: starter
     healthCheckPath: /api/health
-    disk:
-      name: chargeback-copilot-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: APP_ENV
         value: production
@@ -16,8 +18,30 @@ services:
       - key: PORT
         value: 8010
       - key: DATABASE_URL
-        value: sqlite:////var/data/chargeback_copilot.db
+        fromDatabase:
+          name: chargeback-copilot-db
+          property: connectionString
+      - key: SEED_DEMO_DATA
+        value: true
       - key: AUTH_SECRET
         generateValue: true
       - key: SESSION_COOKIE_NAME
         value: chargeback_copilot_session
+      - key: CSRF_COOKIE_NAME
+        value: chargeback_copilot_csrf
+      - key: MAX_JSON_BODY_BYTES
+        value: 65536
+      - key: MAX_UPLOAD_BYTES
+        value: 8388608
+      - key: OBJECT_STORAGE_BACKEND
+        value: local
+      - key: EVIDENCE_UPLOAD_DIR
+        value: /tmp/chargeback-copilot-uploads
+      - key: AUTH_RATE_LIMIT_ATTEMPTS
+        value: 10
+      - key: AUTH_RATE_LIMIT_WINDOW_SECONDS
+        value: 60
+      - key: VIRUS_SCAN_ENABLED
+        value: false
+      - key: VIRUS_SCAN_MODE
+        value: basic

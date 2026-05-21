@@ -297,7 +297,7 @@ The user may add an optional note about what happened. Outcome feedback is for p
 ### Evidence Management
 
 - Support manual evidence entry in MVP.
-- Future upload support should preserve file name, date, source, and user-written summary.
+- Upload support should preserve file name, date, source, content type, size, storage key, scan status, and user-written summary.
 - Allow users to mark evidence as relevant, uncertain, or excluded.
 
 ### Timeline Builder
@@ -482,6 +482,7 @@ Privacy requirements:
 - Avoid storing unnecessary bank credentials.
 - Clearly explain what user data is used for.
 - Do not train models on user evidence without explicit consent.
+- Support user data export and deletion for stored packet data.
 
 Safety requirements:
 

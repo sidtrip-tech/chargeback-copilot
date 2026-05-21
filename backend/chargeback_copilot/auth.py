@@ -8,7 +8,8 @@ from typing import Optional
 DEMO_USER_ID = "user_demo"
 DEMO_EMAIL = "demo@chargebackcopilot.local"
 DEMO_NAME = "Demo User"
-SESSION_COOKIE = "chargeback_copilot_session"
+SESSION_COOKIE = os.environ.get("SESSION_COOKIE_NAME", "chargeback_copilot_session")
+CSRF_COOKIE = os.environ.get("CSRF_COOKIE_NAME", "chargeback_copilot_csrf")
 
 
 def hash_password(password: str, salt: Optional[bytes] = None) -> str:
@@ -35,4 +36,8 @@ def verify_password(password: str, stored_hash: str) -> bool:
 
 
 def new_session_token() -> str:
+    return base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")
+
+
+def new_csrf_token() -> str:
     return base64.urlsafe_b64encode(os.urandom(32)).decode().rstrip("=")

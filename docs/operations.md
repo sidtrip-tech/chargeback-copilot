@@ -18,6 +18,14 @@ MONITOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/product
 
 The monitor exits with a nonzero status if health/readiness fails, the database is not Postgres, storage is not S3, or email is not configured.
 
+GitHub Actions also runs `.github/workflows/production-monitor.yml` every 30 minutes and supports manual runs through **Actions → Production Monitor → Run workflow**.
+
+Optional repository variable:
+
+```text
+MONITOR_BASE_URL=https://chargeback-copilot.onrender.com
+```
+
 ## Request IDs
 
 Every response includes an `X-Request-ID` header. Error responses also include `request_id` in the JSON body, and the frontend shows it in user-facing error messages.

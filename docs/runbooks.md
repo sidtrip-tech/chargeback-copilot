@@ -12,12 +12,13 @@ Use this after each production deploy.
    - storage backend is `s3`
    - email is configured when SMTP is expected
 5. Run `MONITOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/production_monitor.py`.
-6. Sign in with a test account.
-7. Upload, download, and delete a small evidence file.
-8. Generate a packet.
-9. Open the export view.
-10. Send a test email.
-11. Check Render logs for `request.error` events.
+6. Run the GitHub Actions **Production Monitor** workflow manually.
+7. Sign in with a test account.
+8. Upload, download, and delete a small evidence file.
+9. Generate a packet.
+10. Open the export view.
+11. Send a test email.
+12. Check Render logs for `request.error` events.
 
 ## User Reports An Error
 

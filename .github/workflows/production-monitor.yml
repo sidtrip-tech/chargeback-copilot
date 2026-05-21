@@ -1,0 +1,22 @@
+name: Production Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check production health and readiness
+        env:
+          MONITOR_BASE_URL: ${{ vars.MONITOR_BASE_URL || 'https://chargeback-copilot.onrender.com' }}
+          MONITOR_EXPECTED_DATABASE_BACKEND: postgres
+          MONITOR_EXPECTED_STORAGE_BACKEND: s3
+          MONITOR_EXPECT_EMAIL_CONFIGURED: "true"
+        run: python scripts/production_monitor.py

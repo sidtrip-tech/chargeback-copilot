@@ -143,6 +143,7 @@ Current implementation status:
 - Added request IDs, structured JSON request/error logs, and an operations guide for Render log debugging.
 - Added backup/recovery guidance and operational runbooks for deploys, user errors, uploads, email, password reset, and account deletion.
 - Added a synthetic production monitor script for health/readiness dependency checks.
+- Added a scheduled GitHub Actions production monitor that runs every 30 minutes and can be triggered manually.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export

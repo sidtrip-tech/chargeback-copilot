@@ -12,6 +12,7 @@ TIMEOUT_SECONDS = float(os.environ.get("MONITOR_TIMEOUT_SECONDS", "10"))
 EXPECTED_STORAGE_BACKEND = os.environ.get("MONITOR_EXPECTED_STORAGE_BACKEND", "s3")
 EXPECTED_DATABASE_BACKEND = os.environ.get("MONITOR_EXPECTED_DATABASE_BACKEND", "postgres")
 EXPECT_EMAIL_CONFIGURED = os.environ.get("MONITOR_EXPECT_EMAIL_CONFIGURED", "true").lower() in {"1", "true", "yes"}
+EXPECT_AI_CONFIGURED = os.environ.get("MONITOR_EXPECT_AI_CONFIGURED", "false").lower() in {"1", "true", "yes"}
 
 
 def fetch_json(path: str) -> dict:
@@ -41,6 +42,7 @@ def main() -> int:
         database = checks.get("database", {})
         storage = checks.get("storage", {})
         email = checks.get("email", {})
+        ai = checks.get("ai", {})
 
         if database.get("backend") != EXPECTED_DATABASE_BACKEND:
             return fail(f"database backend was {database.get('backend')!r}, expected {EXPECTED_DATABASE_BACKEND!r}")
@@ -48,6 +50,8 @@ def main() -> int:
             return fail(f"storage backend was {storage.get('backend')!r}, expected {EXPECTED_STORAGE_BACKEND!r}")
         if EXPECT_EMAIL_CONFIGURED and not email.get("configured"):
             return fail("email delivery is not configured")
+        if EXPECT_AI_CONFIGURED and not ai.get("configured"):
+            return fail("AI generation is not configured")
 
         elapsed_ms = int((time.time() - started) * 1000)
         print(
@@ -59,6 +63,7 @@ def main() -> int:
                     "database": database,
                     "storage": storage,
                     "email": {"configured": email.get("configured"), "host": email.get("host")},
+                    "ai": {"configured": ai.get("configured")},
                 },
                 sort_keys=True,
             )

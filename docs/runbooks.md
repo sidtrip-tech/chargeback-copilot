@@ -11,6 +11,7 @@ Use this after each production deploy.
    - database backend is `postgres`
    - storage backend is `s3`
    - email is configured when SMTP is expected
+   - AI is configured when live AI is expected
 5. Run `MONITOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/production_monitor.py`.
 6. Run the GitHub Actions **Production Monitor** workflow manually.
 7. Sign in with a test account.

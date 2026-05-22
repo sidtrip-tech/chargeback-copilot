@@ -168,6 +168,13 @@ OPENAI_MODEL=gpt-5.2
 
 The `live_ai` generation mode sends only the dispute fields, evidence summaries, checklist strategy, and evidence gaps to the model. It requires structured JSON output and then runs the same citation validation used by template generation. If AI is unavailable or fails, the app generates a template draft and marks the packet as a fallback.
 
+After enabling AI:
+
+1. Open `/api/readiness` and confirm `ai.configured` is `true`.
+2. In GitHub repository variables, set `MONITOR_EXPECT_AI_CONFIGURED=true` if production should alert when AI is disabled.
+3. In the app, open an in-progress packet, select **Live AI**, and generate a packet.
+4. Confirm the generated claims all show evidence IDs and export remains blocked if high-priority evidence gaps remain.
+
 ## PDF-Ready Export
 
 Packet export is currently PDF-ready HTML. The export page includes print styles and a **Save as PDF** button that opens the browser print dialog. This avoids adding a server-side PDF renderer before the core packet and evidence workflow stabilizes.

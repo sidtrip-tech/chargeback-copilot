@@ -19,4 +19,5 @@ jobs:
           MONITOR_EXPECTED_DATABASE_BACKEND: postgres
           MONITOR_EXPECTED_STORAGE_BACKEND: s3
           MONITOR_EXPECT_EMAIL_CONFIGURED: "true"
+          MONITOR_EXPECT_AI_CONFIGURED: ${{ vars.MONITOR_EXPECT_AI_CONFIGURED || 'false' }}
         run: python scripts/production_monitor.py

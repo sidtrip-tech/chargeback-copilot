@@ -757,6 +757,27 @@ label {
   margin-top: 10px;
 }
 
+.ai-review {
+  border: 1px solid #bae6fd;
+  background: #f0f9ff;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.ai-review.ai {
+  border-color: #c7d2fe;
+  background: #f5f7ff;
+}
+
+.ai-review.warn {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.ai-review p {
+  margin: 7px 0 0;
+}
+
 .check-item {
   display: grid;
   grid-template-columns: 24px 1fr auto;

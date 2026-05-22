@@ -175,6 +175,7 @@ Scope:
 
 - Optional AI generation mode behind configured API key and product controls.
 - AI prompts constrained to user-provided evidence.
+- Draft provenance UI showing Template, Live AI, or Template fallback.
 - Safety refusals for fabrication, unsupported accusations, hidden facts, or outcome promises.
 - OCR/summarization for evidence artifacts.
 - Citation validator and unsupported-claim blocker.
@@ -184,6 +185,7 @@ Exit criteria:
 - AI output cannot pass export validation without citations.
 - Unsupported factual claims are flagged.
 - Template fallback remains available and reliable.
+- Users can clearly tell when a draft was produced by Live AI and must review cited claims before export.
 
 ### Phase 4: Compliance And Launch Readiness
 

@@ -621,6 +621,7 @@ function renderPacket(packet) {
 
 function renderPacketContent(packet) {
   return `
+    ${renderPacketProvenance(packet)}
     <div class="full">
       <p>${packet.summary}</p>
       <p><strong>Suggested bank message:</strong> ${packet.suggested_bank_message}</p>
@@ -633,6 +634,35 @@ function renderPacketContent(packet) {
       <h4>Packet Safety</h4>
       <div class="step">${packet.disclaimer}</div>
       <div class="step">Every factual claim above includes evidence citations.</div>
+    </div>
+  `;
+}
+
+function generationModeLabel(packet) {
+  if (packet.fallback_used) return "Template fallback";
+  if (packet.mode === "live_ai") return "Live AI draft";
+  return "Template draft";
+}
+
+function renderPacketProvenance(packet) {
+  const isAi = packet.mode === "live_ai";
+  const fallback = packet.fallback_used;
+  const reviewText = isAi && !fallback
+    ? "AI drafted this packet from your entered evidence. Review each claim and evidence citation before export."
+    : "This draft was generated from deterministic templates. Review each claim and evidence citation before export.";
+  return `
+    <div class="full ai-review ${isAi && !fallback ? "ai" : ""} ${fallback ? "warn" : ""}">
+      <div>
+        <span class="label">Draft source</span>
+        <strong>${generationModeLabel(packet)}</strong>
+      </div>
+      <p>${reviewText}</p>
+      ${
+        fallback
+          ? `<p><strong>Fallback reason:</strong> ${packet.fallback_reason || "Live AI was unavailable."}</p>`
+          : ""
+      }
+      <p class="muted">Export is still blocked if high-priority evidence gaps or unsupported citations remain.</p>
     </div>
   `;
 }

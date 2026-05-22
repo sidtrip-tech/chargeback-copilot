@@ -348,6 +348,8 @@ Required guardrails:
 - Avoid guarantees about chargeback outcomes.
 - Flag weak cases and missing evidence.
 - Refuse requests to fabricate receipts, alter facts, or hide relevant information.
+- Show users whether a draft came from Template, Live AI, or Template fallback.
+- Remind users to review AI-generated claims and citation IDs before export.
 
 If the AI output contains uncited or unsupported factual claims, the validator should block export or require user revision.
 

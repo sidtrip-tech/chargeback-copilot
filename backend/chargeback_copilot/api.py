@@ -1,10 +1,12 @@
 from dataclasses import asdict
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from html import escape
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from .auth import DEMO_USER_ID, hash_password, new_auth_token, verify_password
+from .ai import ai_available, generate_live_ai_packet
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
 from .emailer import email_delivery_configured, email_health, send_password_reset_email, send_test_email, send_verification_email
 from .jobs import enqueue_job, list_jobs, run_once
@@ -76,6 +78,7 @@ def readiness() -> Dict[str, Any]:
         "database": database_health(),
         "storage": storage_healthcheck(),
         "email": email_health(),
+        "ai": {"ok": True, "configured": ai_available()},
     }
     return {
         "ok": all(item["ok"] for item in checks.values()),
@@ -451,10 +454,24 @@ def job_status(user_id: str) -> Dict[str, Any]:
     return list_jobs(user_id)
 
 
-def generate_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+def generate_packet(dispute_id: str, user_id: str = DEMO_USER_ID, mode: str = "template") -> Dict[str, Any]:
     dispute = get_dispute(dispute_id, user_id)
     artifacts = list_evidence(dispute_id, user_id)
-    packet = generate_template_packet(dispute, artifacts)
+    if mode not in {"template", "live_ai"}:
+        raise ValueError("Generation mode must be template or live_ai.")
+    if mode == "live_ai":
+        try:
+            packet = generate_live_ai_packet(dispute, artifacts)
+        except Exception as exc:
+            fallback = generate_template_packet(dispute, artifacts)
+            packet = replace(
+                fallback,
+                mode="live_ai",
+                fallback_used=True,
+                fallback_reason=str(exc),
+            )
+    else:
+        packet = generate_template_packet(dispute, artifacts)
     save_packet(packet, user_id)
     _audit(user_id, "packet.generated", "packet", packet.id, {"dispute_id": dispute_id, "mode": packet.mode})
     return detail(dispute_id, user_id)

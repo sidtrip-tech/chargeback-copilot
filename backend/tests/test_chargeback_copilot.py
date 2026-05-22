@@ -82,6 +82,13 @@ class ChargebackCopilotTests(unittest.TestCase):
         cited = {citation for claim in packet.claims for citation in claim.citation_evidence_ids}
         self.assertTrue(cited.issubset(source_ids))
 
+    def test_live_ai_generation_falls_back_when_unconfigured(self):
+        init_db()
+        detail = api.generate_packet("case_sub_001", user_id=DEMO_USER_ID, mode="live_ai")
+        self.assertTrue(detail["packet"]["fallback_used"])
+        self.assertEqual(detail["packet"]["mode"], "live_ai")
+        self.assertIn("not configured", detail["packet"]["fallback_reason"])
+
     def test_validation_catches_uncited_and_invalid_claims(self):
         claims = [
             CitedClaim(id="claim_missing", text="No citation.", citation_evidence_ids=[]),
@@ -213,6 +220,7 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(payload["checks"]["database"]["backend"], "sqlite")
         self.assertEqual(payload["checks"]["storage"]["backend"], "local")
         self.assertIn("configured", payload["checks"]["email"])
+        self.assertIn("configured", payload["checks"]["ai"])
 
     def test_disputes_are_scoped_by_owner(self):
         init_db()

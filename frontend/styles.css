@@ -368,6 +368,19 @@ button.ghost {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.mode-select {
+  min-width: 132px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mode-select select {
+  margin-top: 4px;
+  padding: 8px 10px;
+  font-size: 14px;
 }
 
 .notice {

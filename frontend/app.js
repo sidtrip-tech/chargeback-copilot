@@ -342,12 +342,14 @@ function renderStartNew() {
   $("startNewView").classList.remove("hidden");
   $("dashboardView").classList.add("hidden");
   $("generateBtn").disabled = true;
+  $("generationMode").disabled = true;
   $("exportBtn").classList.add("disabled");
   renderCategorySelection(state.selectedStartCategory);
 }
 
 function renderEmptyDetail() {
   $("generateBtn").disabled = true;
+  $("generationMode").disabled = true;
   $("exportBtn").classList.add("disabled");
   $("completedView").classList.add("hidden");
   $("prepView").classList.remove("hidden");
@@ -366,6 +368,7 @@ function renderDetail() {
   const packet = detail.packet;
   const isCompleted = detail.derived_status === "completed";
   $("generateBtn").disabled = isCompleted;
+  $("generationMode").disabled = isCompleted;
   $("exportBtn").href = `/api/disputes/${dispute.id}/export`;
   $("exportBtn").classList.toggle("disabled", !detail.export_ready);
   $("completedView").classList.toggle("hidden", !isCompleted);
@@ -568,7 +571,7 @@ function renderPrepReview(detail) {
   `;
   const status = $("packetStatus");
   if (packet) {
-    status.textContent = packet.status;
+    status.textContent = packet.fallback_used ? `${packet.status} · template fallback` : `${packet.status} · ${packet.mode}`;
     status.className = `pill ${packet.status === "blocked" ? "danger" : ""}`;
   } else {
     status.textContent = "not generated";
@@ -610,7 +613,7 @@ function renderPacket(packet) {
     $("packet").textContent = "Generate a packet after reviewing the checklist and evidence gaps.";
     return;
   }
-  status.textContent = packet.status;
+  status.textContent = packet.fallback_used ? `${packet.status} · template fallback` : `${packet.status} · ${packet.mode}`;
   status.className = `pill ${packet.status === "blocked" ? "danger" : ""}`;
   $("packet").className = "packet-grid";
   $("packet").innerHTML = renderPacketContent(packet);
@@ -735,12 +738,19 @@ async function addEvidence(event) {
 
 async function generatePacket() {
   if (!state.activeId) return;
-  const generatedDetail = await request(`/api/disputes/${state.activeId}/generate`, { method: "POST", body: "{}" });
+  const mode = $("generationMode").value || "template";
+  const generatedDetail = await request(`/api/disputes/${state.activeId}/generate`, {
+    method: "POST",
+    body: JSON.stringify({ mode }),
+  });
   state.detail = generatedDetail;
   if (generatedDetail.derived_status === "completed") {
     state.tab = "completed";
   }
   await loadDisputes();
+  if (generatedDetail.packet?.fallback_used) {
+    showNotice(`Live AI was unavailable, so a template draft was generated: ${generatedDetail.packet.fallback_reason}`);
+  }
 }
 
 async function saveOutcome(event) {

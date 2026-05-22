@@ -156,6 +156,18 @@ Use a transactional email provider or a verified SMTP sender. Without these valu
 
 After SMTP is configured, sign in and use **Send test email** in the sidebar. That sends a harmless test message to the current account email and is the quickest way to confirm Render can reach the SMTP provider.
 
+## Optional AI Drafting
+
+AI drafting is optional. Template generation remains the fallback and works without an API key.
+
+```text
+AI_ENABLED=true
+OPENAI_API_KEY=...
+OPENAI_MODEL=gpt-5.2
+```
+
+The `live_ai` generation mode sends only the dispute fields, evidence summaries, checklist strategy, and evidence gaps to the model. It requires structured JSON output and then runs the same citation validation used by template generation. If AI is unavailable or fails, the app generates a template draft and marks the packet as a fallback.
+
 ## PDF-Ready Export
 
 Packet export is currently PDF-ready HTML. The export page includes print styles and a **Save as PDF** button that opens the browser print dialog. This avoids adding a server-side PDF renderer before the core packet and evidence workflow stabilizes.

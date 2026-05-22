@@ -401,8 +401,8 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path.startswith("/api/disputes/") and path.endswith("/generate"):
                 dispute_id = path.split("/")[3]
-                self._read_json()
-                self._send_json(api.generate_packet(dispute_id, self._current_user_id()))
+                body = self._read_json()
+                self._send_json(api.generate_packet(dispute_id, self._current_user_id(), body.get("mode", "template")))
                 return
             if path.startswith("/api/disputes/") and path.endswith("/outcome"):
                 dispute_id = path.split("/")[3]

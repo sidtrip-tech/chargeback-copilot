@@ -144,6 +144,7 @@ Current implementation status:
 - Added backup/recovery guidance and operational runbooks for deploys, user errors, uploads, email, password reset, and account deletion.
 - Added a synthetic production monitor script for health/readiness dependency checks.
 - Added a scheduled GitHub Actions production monitor that runs every 30 minutes and can be triggered manually.
+- Added optional `live_ai` packet generation through the OpenAI Responses API with structured JSON output, citation validation, and template fallback.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export
@@ -264,7 +265,8 @@ OBJECT_STORAGE_SECRET_ACCESS_KEY=
 VIRUS_SCAN_ENABLED=false
 PDF_EXPORT_ENABLED=true
 OPENAI_API_KEY=
-OPENAI_MODEL=
+AI_ENABLED=false
+OPENAI_MODEL=gpt-5.2
 SENTRY_DSN=
 ```
 

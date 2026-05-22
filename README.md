@@ -87,6 +87,7 @@ The app now includes the first production-foundation slice:
 - Upload scan-status support with a basic scanner mode.
 - PDF-ready HTML packet export with print styling and uploaded-file index.
 - Background job foundation with upload processing jobs and one-shot worker script.
+- Optional citation-validated `live_ai` packet generation with template fallback.
 
 This is not yet full production identity. Hosted auth, email verification, password reset, secure uploads, and deployment hardening are tracked in the production roadmap.
 

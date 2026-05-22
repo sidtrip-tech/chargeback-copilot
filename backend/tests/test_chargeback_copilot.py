@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT))
 
 from chargeback_copilot.models import CitedClaim
 from chargeback_copilot import api
+from chargeback_copilot import ai
 from chargeback_copilot.auth import DEMO_USER_ID
 from chargeback_copilot.dashboard import derived_status, evidence_progress, readiness_score
 from chargeback_copilot.packets import generate_template_packet
@@ -88,6 +89,37 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertTrue(detail["packet"]["fallback_used"])
         self.assertEqual(detail["packet"]["mode"], "live_ai")
         self.assertIn("not configured", detail["packet"]["fallback_reason"])
+
+    def test_live_ai_generation_blocks_invalid_citations(self):
+        original_enabled = ai.AI_ENABLED
+        original_key = ai.OPENAI_API_KEY
+        original_call = ai._call_openai
+        try:
+            ai.AI_ENABLED = True
+            ai.OPENAI_API_KEY = "test-key"
+            ai._call_openai = lambda payload: {
+                "output_text": """{
+                    "title": "AI packet",
+                    "summary": "AI summary",
+                    "suggested_bank_message": "AI message",
+                    "claims": [
+                        {
+                            "id": "claim_bad",
+                            "text": "Unsupported AI claim.",
+                            "citation_evidence_ids": ["ev_fake"]
+                        }
+                    ],
+                    "next_steps": ["Review citations."]
+                }"""
+            }
+            packet = ai.generate_live_ai_packet(dispute("case_sub_001"), evidence("case_sub_001"))
+            self.assertEqual(packet.status, "blocked")
+            self.assertTrue(packet.validation_errors)
+            self.assertIn("invalid evidence citation", packet.validation_errors[0])
+        finally:
+            ai.AI_ENABLED = original_enabled
+            ai.OPENAI_API_KEY = original_key
+            ai._call_openai = original_call
 
     def test_validation_catches_uncited_and_invalid_claims(self):
         claims = [

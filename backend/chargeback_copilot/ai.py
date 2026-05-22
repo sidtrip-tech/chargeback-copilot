@@ -167,7 +167,7 @@ def generate_live_ai_packet(dispute: ConsumerDispute, artifacts: List[EvidenceAr
         CitedClaim(
             id=str(item.get("id") or f"claim_ai_{index + 1}"),
             text=str(item.get("text", "")).strip(),
-            citation_evidence_ids=[evidence_id for evidence_id in item.get("citation_evidence_ids", []) if evidence_id in evidence_ids],
+            citation_evidence_ids=[str(evidence_id) for evidence_id in item.get("citation_evidence_ids", [])],
         )
         for index, item in enumerate(output.get("claims", []))
         if str(item.get("text", "")).strip()

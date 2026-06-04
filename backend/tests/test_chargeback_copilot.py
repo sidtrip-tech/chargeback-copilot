@@ -9,9 +9,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from chargeback_copilot.models import CitedClaim
+from chargeback_copilot.models import BackgroundJob, CitedClaim
 from chargeback_copilot import api
 from chargeback_copilot import ai
+from chargeback_copilot import jobs
 from server import Handler
 from chargeback_copilot.auth import DEMO_USER_ID
 from chargeback_copilot.dashboard import derived_status, evidence_progress, readiness_score
@@ -38,6 +39,7 @@ from chargeback_copilot.store import (
     list_audit_logs,
     list_disputes,
     list_evidence_files,
+    save_background_job,
     save_evidence,
     save_dispute,
     save_outcome,
@@ -429,6 +431,43 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(processed.extracted_text, "No delivery scan")
         exported = api.export_account_data(DEMO_USER_ID)
         self.assertIn("evidence_files", exported)
+
+    def test_background_job_retries_with_backoff_before_failing(self):
+        init_db()
+        original_process = jobs._process_job
+        original_max_attempts = jobs.MAX_JOB_ATTEMPTS
+        try:
+            jobs.MAX_JOB_ATTEMPTS = 2
+            jobs._process_job = lambda job: (_ for _ in ()).throw(RuntimeError("temporary failure"))
+            save_background_job(
+                BackgroundJob(
+                    id=f"job_{uuid4().hex[:12]}",
+                    owner_id=DEMO_USER_ID,
+                    job_type="evidence_file.post_upload_processing",
+                    status="queued",
+                    attempts=0,
+                    payload={"file_id": "missing"},
+                    last_error="",
+                    run_after="2026-05-21T12:00:00Z",
+                    created_at="2026-05-21T12:00:00Z",
+                    updated_at="2026-05-21T12:00:00Z",
+                )
+            )
+
+            first = jobs.run_once("2026-05-21T12:00:00Z")[0]
+            self.assertEqual(first.status, "queued")
+            self.assertEqual(first.attempts, 1)
+            self.assertEqual(first.run_after, "2026-05-21T12:01:00Z")
+
+            self.assertEqual(jobs.run_once("2026-05-21T12:00:30Z"), [])
+
+            second = jobs.run_once("2026-05-21T12:01:00Z")[0]
+            self.assertEqual(second.status, "failed")
+            self.assertEqual(second.attempts, 2)
+            self.assertIn("temporary failure", second.last_error)
+        finally:
+            jobs._process_job = original_process
+            jobs.MAX_JOB_ATTEMPTS = original_max_attempts
 
     def test_evidence_file_download_and_delete_are_owner_checked(self):
         init_db()

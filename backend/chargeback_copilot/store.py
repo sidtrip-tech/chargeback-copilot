@@ -1442,7 +1442,7 @@ def list_background_jobs(owner_id: str, limit: int = 20) -> List[BackgroundJob]:
         conn.close()
 
 
-def get_queued_jobs(limit: int = 10) -> List[BackgroundJob]:
+def get_queued_jobs(now: str, limit: int = 10) -> List[BackgroundJob]:
     if using_postgres():
         conn = connect_postgres()
         try:
@@ -1462,11 +1462,11 @@ def get_queued_jobs(limit: int = 10) -> List[BackgroundJob]:
                 for row in conn.execute(
                     """
                     SELECT * FROM background_jobs
-                    WHERE status = 'queued' AND run_after <= now()
+                    WHERE status = 'queued' AND run_after <= %s
                     ORDER BY run_after ASC
                     LIMIT %s
                     """,
-                    (limit,),
+                    (now, limit),
                 ).fetchall()
             ]
         finally:
@@ -1489,11 +1489,11 @@ def get_queued_jobs(limit: int = 10) -> List[BackgroundJob]:
             for row in conn.execute(
                 """
                 SELECT * FROM background_jobs
-                WHERE status = 'queued'
+                WHERE status = 'queued' AND run_after <= ?
                 ORDER BY run_after ASC
                 LIMIT ?
                 """,
-                (limit,),
+                (now, limit),
             ).fetchall()
         ]
     finally:

@@ -208,6 +208,14 @@ After the Blueprint sync creates the cron service, set the same S3 environment v
 
 The cron service shares the managed Postgres database through the Blueprint `DATABASE_URL` reference.
 
+Failed jobs are retried with exponential backoff. The defaults are:
+
+- `MAX_JOB_ATTEMPTS=3`
+- `JOB_RETRY_BASE_SECONDS=60`
+- `JOB_RETRY_MAX_SECONDS=3600`
+
+If a job fails before the max attempt count, it returns to `queued` with a later `run_after` timestamp. After the max attempt count, it remains `failed` with `last_error` for debugging.
+
 The manual HTTP job endpoint `/api/jobs/run` is disabled unless `JOB_RUN_TOKEN` is set on the web service. If you do enable it for emergency/manual operations, call it with:
 
 ```bash

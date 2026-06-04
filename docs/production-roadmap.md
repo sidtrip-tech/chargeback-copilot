@@ -148,6 +148,7 @@ Current implementation status:
 - Added a required pre-export acknowledgement for truthful information, reviewed citations, and no legal/financial/banking/issuer advice, with persisted consent and an audit-log entry before export.
 - Added background text extraction for text-like uploaded evidence files, with unsupported binary files clearly marked until full OCR is added.
 - Added a Render cron service definition for automatic background job processing and protected the manual `/api/jobs/run` endpoint with `JOB_RUN_TOKEN`.
+- Added background job retry/backoff controls so transient upload-processing failures do not permanently strand evidence extraction.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export
@@ -169,6 +170,7 @@ Exit criteria:
 - Users can safely upload, preview, use, and delete evidence files.
 - Text-like uploaded evidence files produce extracted text previews; PDFs/images remain queued for a future OCR service.
 - Background upload-processing jobs run automatically through a scheduled production job.
+- Failed background jobs retry with bounded exponential backoff and keep `last_error` for debugging.
 - Packet exports include cited claims and evidence index.
 - Final export is blocked when required evidence or citation validation fails.
 - Export flow records the user's pre-export acknowledgement before opening the packet and blocks direct export requests without consent for the current packet.

@@ -49,6 +49,12 @@ services:
         value: 60
       - key: JOB_RUN_TOKEN
         sync: false
+      - key: MAX_JOB_ATTEMPTS
+        value: 3
+      - key: JOB_RETRY_BASE_SECONDS
+        value: 60
+      - key: JOB_RETRY_MAX_SECONDS
+        value: 3600
       - key: VIRUS_SCAN_ENABLED
         value: false
       - key: VIRUS_SCAN_MODE
@@ -81,6 +87,12 @@ services:
         sync: false
       - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
         sync: false
+      - key: MAX_JOB_ATTEMPTS
+        value: 3
+      - key: JOB_RETRY_BASE_SECONDS
+        value: 60
+      - key: JOB_RETRY_MAX_SECONDS
+        value: 3600
       - key: VIRUS_SCAN_ENABLED
         value: false
       - key: VIRUS_SCAN_MODE

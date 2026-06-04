@@ -86,7 +86,7 @@ The app now includes the first production-foundation slice:
 - Local/S3-compatible evidence storage adapter selected by `OBJECT_STORAGE_BACKEND`.
 - Upload scan-status support with a basic scanner mode.
 - PDF-ready HTML packet export with print styling and uploaded-file index.
-- Background job foundation with upload processing jobs and one-shot worker script.
+- Background job foundation with upload processing jobs, a one-shot worker script, and Render cron configuration.
 - Optional citation-validated `live_ai` packet generation with template fallback.
 
 This is not yet full production identity. Hosted auth, email verification, password reset, secure uploads, and deployment hardening are tracked in the production roadmap.

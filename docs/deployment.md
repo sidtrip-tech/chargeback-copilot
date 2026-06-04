@@ -193,13 +193,26 @@ python3 scripts/run_jobs.py
 
 Evidence uploads enqueue a `evidence_file.post_upload_processing` job. The worker currently extracts text from text-like uploads such as `text/plain` and `message/rfc822`, stores the extracted text with the evidence-file metadata, and marks unsupported binary formats as unsupported. Future work should add real OCR for PDFs/images, stronger malware scanning, native PDF rendering, and AI preparation.
 
-On Render, this can become a separate Worker service that runs the same Docker image with:
+On Render, `render.yaml` defines a `chargeback-copilot-jobs` cron service that runs every five minutes with:
 
 ```bash
 python3 scripts/run_jobs.py
 ```
 
-For production, change it from one-shot execution to a polling worker or scheduled job.
+After the Blueprint sync creates the cron service, set the same S3 environment variables on it that the web service uses:
+
+- `OBJECT_STORAGE_BUCKET`
+- `OBJECT_STORAGE_REGION`
+- `OBJECT_STORAGE_ACCESS_KEY_ID`
+- `OBJECT_STORAGE_SECRET_ACCESS_KEY`
+
+The cron service shares the managed Postgres database through the Blueprint `DATABASE_URL` reference.
+
+The manual HTTP job endpoint `/api/jobs/run` is disabled unless `JOB_RUN_TOKEN` is set on the web service. If you do enable it for emergency/manual operations, call it with:
+
+```bash
+curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" https://your-render-service.onrender.com/api/jobs/run
+```
 
 ## Upload Scanning
 

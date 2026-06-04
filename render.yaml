@@ -34,13 +34,53 @@ services:
       - key: MAX_UPLOAD_BYTES
         value: 8388608
       - key: OBJECT_STORAGE_BACKEND
-        value: local
-      - key: EVIDENCE_UPLOAD_DIR
-        value: /tmp/chargeback-copilot-uploads
+        value: s3
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_REGION
+        sync: false
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
       - key: AUTH_RATE_LIMIT_ATTEMPTS
         value: 10
       - key: AUTH_RATE_LIMIT_WINDOW_SECONDS
         value: 60
+      - key: JOB_RUN_TOKEN
+        sync: false
+      - key: VIRUS_SCAN_ENABLED
+        value: false
+      - key: VIRUS_SCAN_MODE
+        value: basic
+
+  - type: cron
+    name: chargeback-copilot-jobs
+    runtime: docker
+    plan: starter
+    schedule: "*/5 * * * *"
+    dockerCommand: python3 scripts/run_jobs.py
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: chargeback-copilot-db
+          property: connectionString
+      - key: SEED_DEMO_DATA
+        value: true
+      - key: MAX_UPLOAD_BYTES
+        value: 8388608
+      - key: OBJECT_STORAGE_BACKEND
+        value: s3
+      - key: OBJECT_STORAGE_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_REGION
+        sync: false
+      - key: OBJECT_STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: OBJECT_STORAGE_SECRET_ACCESS_KEY
+        sync: false
       - key: VIRUS_SCAN_ENABLED
         value: false
       - key: VIRUS_SCAN_MODE

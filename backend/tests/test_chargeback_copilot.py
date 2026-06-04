@@ -1,5 +1,6 @@
 import sys
 import unittest
+import os
 from dataclasses import replace
 from uuid import uuid4
 from pathlib import Path
@@ -11,6 +12,7 @@ sys.path.insert(0, str(ROOT))
 from chargeback_copilot.models import CitedClaim
 from chargeback_copilot import api
 from chargeback_copilot import ai
+from server import Handler
 from chargeback_copilot.auth import DEMO_USER_ID
 from chargeback_copilot.dashboard import derived_status, evidence_progress, readiness_score
 from chargeback_copilot.packets import generate_template_packet
@@ -319,6 +321,28 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(payload["checks"]["storage"]["backend"], "local")
         self.assertIn("configured", payload["checks"]["email"])
         self.assertIn("configured", payload["checks"]["ai"])
+
+    def test_job_runner_endpoint_requires_token(self):
+        original = os.environ.get("JOB_RUN_TOKEN")
+        try:
+            os.environ["JOB_RUN_TOKEN"] = "job-secret"
+
+            class Headers(dict):
+                def get(self, key, default=None):
+                    return super().get(key, default)
+
+            handler = object.__new__(Handler)
+            handler.headers = Headers()
+            with self.assertRaises(PermissionError):
+                handler._validate_job_run_token()
+
+            handler.headers = Headers({"X-Job-Run-Token": "job-secret"})
+            handler._validate_job_run_token()
+        finally:
+            if original is None:
+                os.environ.pop("JOB_RUN_TOKEN", None)
+            else:
+                os.environ["JOB_RUN_TOKEN"] = original
 
     def test_disputes_are_scoped_by_owner(self):
         init_db()

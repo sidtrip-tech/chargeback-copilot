@@ -181,6 +181,14 @@ class Handler(BaseHTTPRequestHandler):
     def _current_user_id(self):
         return api.current_user(self._session_token())["id"]
 
+    def _validate_job_run_token(self):
+        expected = os.environ.get("JOB_RUN_TOKEN", "")
+        if not expected:
+            raise PermissionError("Job runner endpoint is disabled.")
+        provided = self.headers.get("X-Job-Run-Token", "")
+        if provided != expected:
+            raise PermissionError("Invalid job runner token.")
+
     def _client_key(self):
         forwarded_for = self.headers.get("X-Forwarded-For", "")
         if forwarded_for:
@@ -259,6 +267,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(api.readiness())
                 return
             if path == "/api/jobs/run":
+                self._validate_job_run_token()
                 self._send_json(api.run_jobs())
                 return
             if path == "/api/auth/me":

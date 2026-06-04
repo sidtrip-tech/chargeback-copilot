@@ -239,10 +239,22 @@ The same token can inspect recent global background jobs without exposing raw pa
 curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://your-render-service.onrender.com/api/admin/jobs?limit=25"
 ```
 
+Or use the operator helper script:
+
+```bash
+JOB_RUN_TOKEN=... OPERATOR_BASE_URL=https://your-render-service.onrender.com python3 scripts/operator_jobs.py list --limit 25
+```
+
 After fixing the underlying cause of a failed job, requeue it with:
 
 ```bash
 curl -X POST -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://your-render-service.onrender.com/api/admin/jobs/<job_id>/retry"
+```
+
+Helper script equivalent:
+
+```bash
+JOB_RUN_TOKEN=... OPERATOR_BASE_URL=https://your-render-service.onrender.com python3 scripts/operator_jobs.py retry <job_id>
 ```
 
 Operator job list/retry calls emit structured logs (`operator.jobs.listed` and `operator.job.retry_requested`) with request ID, client IP, and safe job metadata. They do not log `JOB_RUN_TOKEN` or raw job payload values.

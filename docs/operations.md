@@ -54,10 +54,10 @@ Useful events:
 
 If `retried` or `failed` is nonzero, search the same logs for `jobs.run.job_not_completed` and inspect `last_error`.
 
-For an operator API view of recent global jobs, set `JOB_RUN_TOKEN` on the web service and call:
+For an operator API view of recent global jobs, set `JOB_RUN_TOKEN` locally and run:
 
 ```bash
-curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://chargeback-copilot.onrender.com/api/admin/jobs?limit=25"
+JOB_RUN_TOKEN=... OPERATOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/operator_jobs.py list --limit 25
 ```
 
 The response includes job status, attempts, timestamps, `last_error`, and payload keys only. It intentionally omits raw payload values.
@@ -65,7 +65,7 @@ The response includes job status, attempts, timestamps, `last_error`, and payloa
 After fixing the underlying problem, requeue a failed job with:
 
 ```bash
-curl -X POST -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://chargeback-copilot.onrender.com/api/admin/jobs/<job_id>/retry"
+JOB_RUN_TOKEN=... OPERATOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/operator_jobs.py retry <job_id>
 ```
 
 Manual retry resets attempts to zero, clears `last_error`, and returns the job to `queued`.

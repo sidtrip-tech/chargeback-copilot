@@ -40,6 +40,18 @@ JOB_RUN_TOKEN=<same value configured on the Render web service>
 
 When `JOB_RUN_TOKEN` is available and readiness fails because background jobs are unhealthy, the production monitor prints sanitized recent job diagnostics from `/api/admin/jobs`.
 
+## Operator Token Rotation
+
+To rotate `JOB_RUN_TOKEN` without breaking operator tooling:
+
+1. Set `JOB_RUN_TOKEN_PREVIOUS` on the Render web service to the current token.
+2. Replace `JOB_RUN_TOKEN` on the Render web service with the new token.
+3. Update the GitHub Actions `JOB_RUN_TOKEN` secret with the new token.
+4. Verify operator access with `JOB_RUN_TOKEN=<new token> python3 scripts/operator_jobs.py list --limit 1`.
+5. Remove `JOB_RUN_TOKEN_PREVIOUS` after the new token is confirmed everywhere.
+
+For local testing before updating GitHub secrets, set `JOB_RUN_TOKEN_NEXT=<new token>` when running `scripts/operator_jobs.py` or `scripts/production_monitor.py`.
+
 ## Request IDs
 
 Every response includes an `X-Request-ID` header. Error responses also include `request_id` in the JSON body, and the frontend shows it in user-facing error messages.

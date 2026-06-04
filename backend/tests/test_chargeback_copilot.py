@@ -333,8 +333,10 @@ class ChargebackCopilotTests(unittest.TestCase):
 
     def test_job_runner_endpoint_requires_token(self):
         original = os.environ.get("JOB_RUN_TOKEN")
+        original_previous = os.environ.get("JOB_RUN_TOKEN_PREVIOUS")
         try:
             os.environ["JOB_RUN_TOKEN"] = "job-secret"
+            os.environ["JOB_RUN_TOKEN_PREVIOUS"] = "old-job-secret"
 
             class Headers(dict):
                 def get(self, key, default=None):
@@ -347,11 +349,20 @@ class ChargebackCopilotTests(unittest.TestCase):
 
             handler.headers = Headers({"X-Job-Run-Token": "job-secret"})
             handler._validate_job_run_token()
+            handler.headers = Headers({"X-Job-Run-Token": "old-job-secret"})
+            handler._validate_job_run_token()
+            handler.headers = Headers({"X-Job-Run-Token": "wrong-secret"})
+            with self.assertRaises(PermissionError):
+                handler._validate_job_run_token()
         finally:
             if original is None:
                 os.environ.pop("JOB_RUN_TOKEN", None)
             else:
                 os.environ["JOB_RUN_TOKEN"] = original
+            if original_previous is None:
+                os.environ.pop("JOB_RUN_TOKEN_PREVIOUS", None)
+            else:
+                os.environ["JOB_RUN_TOKEN_PREVIOUS"] = original_previous
 
     def test_operator_event_logging_omits_tokens(self):
         captured = []

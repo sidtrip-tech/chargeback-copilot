@@ -156,6 +156,7 @@ Current implementation status:
 - Added structured operator logs for job listing and manual retry actions without logging tokens or raw job payloads.
 - Added an operator helper script for listing and retrying background jobs without hand-building curl requests.
 - Added optional background-job diagnostics to the production monitor when `JOB_RUN_TOKEN` is available.
+- Added operator token rotation support with `JOB_RUN_TOKEN_PREVIOUS` and local `JOB_RUN_TOKEN_NEXT` helper-script override.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export

@@ -13,7 +13,7 @@ BASE_URL = (
     or "https://chargeback-copilot.onrender.com"
 ).rstrip("/")
 TIMEOUT_SECONDS = float(os.environ.get("OPERATOR_TIMEOUT_SECONDS", "15"))
-JOB_RUN_TOKEN = os.environ.get("JOB_RUN_TOKEN", "")
+JOB_RUN_TOKEN = os.environ.get("JOB_RUN_TOKEN_NEXT") or os.environ.get("JOB_RUN_TOKEN", "")
 
 
 def request_json(path: str, method: str = "GET") -> dict:

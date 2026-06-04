@@ -14,7 +14,7 @@ EXPECTED_STORAGE_BACKEND = os.environ.get("MONITOR_EXPECTED_STORAGE_BACKEND", "s
 EXPECTED_DATABASE_BACKEND = os.environ.get("MONITOR_EXPECTED_DATABASE_BACKEND", "postgres")
 EXPECT_EMAIL_CONFIGURED = os.environ.get("MONITOR_EXPECT_EMAIL_CONFIGURED", "true").lower() in {"1", "true", "yes"}
 EXPECT_AI_CONFIGURED = os.environ.get("MONITOR_EXPECT_AI_CONFIGURED", "false").lower() in {"1", "true", "yes"}
-JOB_RUN_TOKEN = os.environ.get("JOB_RUN_TOKEN", "")
+JOB_RUN_TOKEN = os.environ.get("JOB_RUN_TOKEN_NEXT") or os.environ.get("JOB_RUN_TOKEN", "")
 JOB_DIAGNOSTICS_LIMIT = int(os.environ.get("MONITOR_JOB_DIAGNOSTICS_LIMIT", "10"))
 
 

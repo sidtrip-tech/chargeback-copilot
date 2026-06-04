@@ -261,6 +261,8 @@ Operator job list/retry calls emit structured logs (`operator.jobs.listed` and `
 
 If you store `JOB_RUN_TOKEN` as a GitHub Actions secret, the scheduled production monitor can include sanitized recent job diagnostics when readiness fails because background jobs are unhealthy. Configure optional `MONITOR_JOB_DIAGNOSTICS_LIMIT` as a repository variable to adjust how many jobs are printed.
 
+For rotation, the web service also supports `JOB_RUN_TOKEN_PREVIOUS`. Temporarily set it to the old token, set `JOB_RUN_TOKEN` to the new token, update the GitHub secret, verify access, then remove `JOB_RUN_TOKEN_PREVIOUS`.
+
 ## Upload Scanning
 
 The app records a `scan_status` for each uploaded evidence file:

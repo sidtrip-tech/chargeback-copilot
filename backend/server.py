@@ -186,11 +186,18 @@ class Handler(BaseHTTPRequestHandler):
         return api.current_user(self._session_token())["id"]
 
     def _validate_job_run_token(self):
-        expected = os.environ.get("JOB_RUN_TOKEN", "")
-        if not expected:
+        expected_tokens = [
+            token
+            for token in (
+                os.environ.get("JOB_RUN_TOKEN", ""),
+                os.environ.get("JOB_RUN_TOKEN_PREVIOUS", ""),
+            )
+            if token
+        ]
+        if not expected_tokens:
             raise PermissionError("Job runner endpoint is disabled.")
         provided = self.headers.get("X-Job-Run-Token", "")
-        if provided != expected:
+        if provided not in expected_tokens:
             raise PermissionError("Invalid job runner token.")
 
     def _log_operator_event(self, event, **fields):

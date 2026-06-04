@@ -49,6 +49,8 @@ services:
         value: 60
       - key: JOB_RUN_TOKEN
         sync: false
+      - key: JOB_RUN_TOKEN_PREVIOUS
+        sync: false
       - key: MAX_JOB_ATTEMPTS
         value: 3
       - key: JOB_RETRY_BASE_SECONDS

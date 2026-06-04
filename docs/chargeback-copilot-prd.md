@@ -545,7 +545,7 @@ After the public MVP validates the core workflow, the product should move throug
 Phases:
 
 - Production Foundation: real backend framework, Postgres, migrations, authentication, session security, and user-owned packets.
-- Evidence And Export: secure uploads, object storage, virus scanning, previews, delete controls, OCR where useful, and PDF export.
+- Evidence And Export: secure uploads, object storage, virus scanning, previews, delete controls, text extraction/OCR where useful, and PDF export.
 - AI-Assisted Preparation: optional citation-validated AI drafting, OCR/summarization, safety refusals, and deterministic template fallback.
 - Compliance And Launch Readiness: privacy/security review, audit logs, user data export/deletion support, analytics, monitoring, backups, support flows, staging, and production deployment.
 

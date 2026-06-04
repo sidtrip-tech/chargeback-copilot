@@ -146,7 +146,7 @@ def store_evidence_file(
         storage_bucket=OBJECT_STORAGE_BUCKET,
         storage_key=storage_key,
         scan_status=scan_status,
-        extraction_status="not_configured",
+        extraction_status="pending",
         created_at=created_at,
     )
 

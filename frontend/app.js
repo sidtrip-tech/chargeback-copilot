@@ -24,6 +24,15 @@ function money(cents, currency) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(cents / 100);
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function showNotice(message) {
   const notice = $("notice");
   notice.textContent = message || "";
@@ -712,17 +721,23 @@ function renderEvidenceFiles(files) {
   return files.length
     ? files
         .map(
-          (file) => `
+          (file) => {
+            const extractedText = file.extracted_text
+              ? `<details class="file-extract"><summary>View extracted text</summary><p>${escapeHtml(file.extracted_text.slice(0, 800))}</p></details>`
+              : "";
+            return `
       <div class="file-item">
-        <strong>${file.original_filename}</strong>
-        <span>${file.content_type} · ${Math.round(file.size_bytes / 1024)} KB</span>
-        <div class="citations">Evidence: ${file.evidence_id} · Scan: ${file.scan_status}</div>
+        <strong>${escapeHtml(file.original_filename)}</strong>
+        <span>${escapeHtml(file.content_type)} · ${Math.round(file.size_bytes / 1024)} KB</span>
+        <div class="citations">Evidence: ${escapeHtml(file.evidence_id)} · Scan: ${escapeHtml(file.scan_status)} · Text: ${escapeHtml(file.extraction_status)}</div>
+        ${extractedText}
         <div class="file-actions">
           <a href="/api/evidence-files/${file.id}/download" target="_blank" rel="noreferrer">Download</a>
           <button type="button" class="text-button danger" data-delete-file="${file.id}">Delete</button>
         </div>
       </div>
-    `
+    `;
+          }
         )
         .join("")
     : '<p class="empty-state">No uploaded files yet.</p>';

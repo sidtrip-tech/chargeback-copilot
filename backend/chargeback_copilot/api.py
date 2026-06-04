@@ -586,7 +586,7 @@ def export_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> str:
         for item in data["evidence"]
     )
     file_index = "\n".join(
-        f"<li><strong>{escape(item['id'])}</strong>: {escape(item['original_filename'])} ({escape(item['content_type'])}, {item['size_bytes'] / 1024:,.1f} KB)<br><small>Evidence: {escape(item['evidence_id'])}; Scan: {escape(item['scan_status'])}</small></li>"
+        f"<li><strong>{escape(item['id'])}</strong>: {escape(item['original_filename'])} ({escape(item['content_type'])}, {item['size_bytes'] / 1024:,.1f} KB)<br><small>Evidence: {escape(item['evidence_id'])}; Scan: {escape(item['scan_status'])}; Text extraction: {escape(item['extraction_status'])}</small></li>"
         for item in data.get("evidence_files", [])
     )
     next_steps = "\n".join(f"<li>{escape(step)}</li>" for step in packet["next_steps"])

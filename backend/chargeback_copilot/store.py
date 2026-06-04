@@ -966,9 +966,9 @@ def save_evidence_file(file: EvidenceFile) -> None:
                 """
                 INSERT INTO evidence_files (
                     id, evidence_id, dispute_id, owner_id, original_filename, content_type, size_bytes,
-                    storage_bucket, storage_key, scan_status, extraction_status, created_at
+                    storage_bucket, storage_key, scan_status, extraction_status, extracted_text, created_at
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (id) DO UPDATE SET
                     original_filename = EXCLUDED.original_filename,
                     content_type = EXCLUDED.content_type,
@@ -976,7 +976,8 @@ def save_evidence_file(file: EvidenceFile) -> None:
                     storage_bucket = EXCLUDED.storage_bucket,
                     storage_key = EXCLUDED.storage_key,
                     scan_status = EXCLUDED.scan_status,
-                    extraction_status = EXCLUDED.extraction_status
+                    extraction_status = EXCLUDED.extraction_status,
+                    extracted_text = EXCLUDED.extracted_text
                 """,
                 (
                     file.id,
@@ -990,6 +991,7 @@ def save_evidence_file(file: EvidenceFile) -> None:
                     file.storage_key,
                     file.scan_status,
                     file.extraction_status,
+                    file.extracted_text,
                     file.created_at,
                 ),
             )
@@ -1040,6 +1042,7 @@ def list_evidence_files(owner_id: str, dispute_id: Optional[str] = None) -> List
                     scan_status=row["scan_status"],
                     extraction_status=row["extraction_status"],
                     created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
+                    extracted_text=row["extracted_text"] or "",
                 )
                 for row in rows
             ]
@@ -1082,6 +1085,7 @@ def get_evidence_file(owner_id: str, file_id: str) -> Optional[EvidenceFile]:
                 scan_status=row["scan_status"],
                 extraction_status=row["extraction_status"],
                 created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
+                extracted_text=row["extracted_text"] or "",
             )
         finally:
             conn.close()

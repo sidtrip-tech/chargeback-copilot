@@ -191,7 +191,7 @@ The app includes a minimal background job table and worker command:
 python3 scripts/run_jobs.py
 ```
 
-Evidence uploads enqueue a `evidence_file.post_upload_processing` job. The current worker marks placeholder jobs complete. Future work should route by job type for malware scanning, OCR, native PDF rendering, and AI preparation.
+Evidence uploads enqueue a `evidence_file.post_upload_processing` job. The worker currently extracts text from text-like uploads such as `text/plain` and `message/rfc822`, stores the extracted text with the evidence-file metadata, and marks unsupported binary formats as unsupported. Future work should add real OCR for PDFs/images, stronger malware scanning, native PDF rendering, and AI preparation.
 
 On Render, this can become a separate Worker service that runs the same Docker image with:
 

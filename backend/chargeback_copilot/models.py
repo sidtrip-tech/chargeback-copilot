@@ -63,6 +63,7 @@ class EvidenceFile:
     scan_status: str
     extraction_status: str
     created_at: str
+    extracted_text: str = ""
 
 
 @dataclass(frozen=True)

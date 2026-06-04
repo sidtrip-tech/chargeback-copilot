@@ -726,6 +726,30 @@ label {
   font-size: 13px;
 }
 
+.file-extract {
+  margin-top: 8px;
+  color: #334155;
+}
+
+.file-extract summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.file-extract p {
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 8px 0 0;
+  border: 1px solid #e4eaf1;
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 10px;
+  font-size: 13px;
+}
+
 .file-actions {
   display: flex;
   gap: 10px;

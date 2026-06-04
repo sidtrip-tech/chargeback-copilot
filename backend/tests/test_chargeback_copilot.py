@@ -377,6 +377,7 @@ class ChargebackCopilotTests(unittest.TestCase):
 
     def test_evidence_file_upload_creates_metadata(self):
         init_db()
+        filename = f"tracking-{uuid4().hex[:8]}.txt"
         api.add_evidence_upload(
             "case_delivery_002",
             {
@@ -387,18 +388,21 @@ class ChargebackCopilotTests(unittest.TestCase):
                 "summary": "Tracking page shows no delivery scan.",
             },
             {
-                "filename": "tracking.txt",
+                "filename": filename,
                 "content_type": "text/plain",
                 "data": b"No delivery scan",
             },
             DEMO_USER_ID,
         )
         files = list_evidence_files(DEMO_USER_ID, "case_delivery_002")
-        self.assertTrue(any(file.original_filename == "tracking.txt" for file in files))
+        self.assertTrue(any(file.original_filename == filename for file in files))
         jobs = api.job_status(DEMO_USER_ID)["jobs"]
         self.assertTrue(any(job["job_type"] == "evidence_file.post_upload_processing" for job in jobs))
         completed = api.run_jobs()["completed"]
         self.assertTrue(any(job["status"] == "completed" for job in completed))
+        processed = next(file for file in list_evidence_files(DEMO_USER_ID, "case_delivery_002") if file.original_filename == filename)
+        self.assertEqual(processed.extraction_status, "extracted")
+        self.assertEqual(processed.extracted_text, "No delivery scan")
         exported = api.export_account_data(DEMO_USER_ID)
         self.assertIn("evidence_files", exported)
 

@@ -663,6 +663,11 @@ function renderPacketProvenance(packet) {
           : ""
       }
       <p class="muted">Export is still blocked if high-priority evidence gaps or unsupported citations remain.</p>
+      ${
+        packet.generation_metadata
+          ? `<div class="citations">Claims: ${packet.generation_metadata.claim_count || packet.claims.length} · Validation errors: ${packet.generation_metadata.validation_error_count || packet.validation_errors.length}</div>`
+          : ""
+      }
     </div>
   `;
 }

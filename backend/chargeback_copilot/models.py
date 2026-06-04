@@ -127,6 +127,7 @@ class Packet:
     mode: str = "template"
     fallback_used: bool = False
     fallback_reason: Optional[str] = None
+    generation_metadata: Dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

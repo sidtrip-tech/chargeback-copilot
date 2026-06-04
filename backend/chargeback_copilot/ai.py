@@ -190,4 +190,12 @@ def generate_live_ai_packet(dispute: ConsumerDispute, artifacts: List[EvidenceAr
         created_at=utc_now(),
         disclaimer=DISCLAIMER,
         mode="live_ai",
+        generation_metadata={
+            "generator": "openai_responses",
+            "model": OPENAI_MODEL,
+            "claim_count": str(len(claims)),
+            "timeline_event_count": str(len(timeline)),
+            "high_gap_count": str(sum(1 for gap in gaps if gap.severity == "high")),
+            "validation_error_count": str(len(validation_errors)),
+        },
     )

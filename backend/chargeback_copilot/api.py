@@ -473,7 +473,23 @@ def generate_packet(dispute_id: str, user_id: str = DEMO_USER_ID, mode: str = "t
     else:
         packet = generate_template_packet(dispute, artifacts)
     save_packet(packet, user_id)
-    _audit(user_id, "packet.generated", "packet", packet.id, {"dispute_id": dispute_id, "mode": packet.mode})
+    _audit(
+        user_id,
+        "packet.generated",
+        "packet",
+        packet.id,
+        {
+            "dispute_id": dispute_id,
+            "requested_mode": mode,
+            "mode": packet.mode,
+            "fallback_used": str(packet.fallback_used),
+            "status": packet.status,
+            "claim_count": str(len(packet.claims)),
+            "validation_error_count": str(len(packet.validation_errors)),
+            "high_gap_count": str(sum(1 for gap in packet.evidence_gaps if gap.severity == "high")),
+            "model": packet.generation_metadata.get("model", ""),
+        },
+    )
     return detail(dispute_id, user_id)
 
 

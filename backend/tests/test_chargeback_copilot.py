@@ -32,6 +32,7 @@ from chargeback_copilot.store import (
     get_outcome,
     get_user_by_email,
     init_db,
+    list_audit_logs,
     list_disputes,
     list_evidence_files,
     save_dispute,
@@ -89,6 +90,10 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertTrue(detail["packet"]["fallback_used"])
         self.assertEqual(detail["packet"]["mode"], "live_ai")
         self.assertIn("not configured", detail["packet"]["fallback_reason"])
+        self.assertEqual(detail["packet"]["generation_metadata"]["generator"], "template")
+        generated = next(entry for entry in list_audit_logs(DEMO_USER_ID) if entry.action == "packet.generated")
+        self.assertEqual(generated.metadata["requested_mode"], "live_ai")
+        self.assertEqual(generated.metadata["fallback_used"], "True")
 
     def test_live_ai_generation_blocks_invalid_citations(self):
         original_enabled = ai.AI_ENABLED
@@ -114,6 +119,9 @@ class ChargebackCopilotTests(unittest.TestCase):
             }
             packet = ai.generate_live_ai_packet(dispute("case_sub_001"), evidence("case_sub_001"))
             self.assertEqual(packet.status, "blocked")
+            self.assertEqual(packet.generation_metadata["generator"], "openai_responses")
+            self.assertEqual(packet.generation_metadata["model"], "gpt-5.2")
+            self.assertEqual(packet.generation_metadata["validation_error_count"], "1")
             self.assertTrue(packet.validation_errors)
             self.assertIn("invalid evidence citation", packet.validation_errors[0])
         finally:

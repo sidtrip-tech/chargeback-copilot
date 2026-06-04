@@ -123,5 +123,11 @@ def generate_template_packet(dispute: ConsumerDispute, artifacts: List[EvidenceA
         status=status,
         created_at=utc_now(),
         disclaimer=DISCLAIMER,
+        generation_metadata={
+            "generator": "template",
+            "claim_count": str(len(claims)),
+            "timeline_event_count": str(len(timeline)),
+            "high_gap_count": str(sum(1 for gap in gaps if gap.severity == "high")),
+            "validation_error_count": str(len(validation_errors)),
+        },
     )
-

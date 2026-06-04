@@ -323,6 +323,8 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(payload["checks"]["storage"]["backend"], "local")
         self.assertIn("configured", payload["checks"]["email"])
         self.assertIn("configured", payload["checks"]["ai"])
+        self.assertIn("jobs", payload["checks"])
+        self.assertIn("stale_queued", payload["checks"]["jobs"])
 
     def test_job_runner_endpoint_requires_token(self):
         original = os.environ.get("JOB_RUN_TOKEN")
@@ -439,9 +441,10 @@ class ChargebackCopilotTests(unittest.TestCase):
         try:
             jobs.MAX_JOB_ATTEMPTS = 2
             jobs._process_job = lambda job: (_ for _ in ()).throw(RuntimeError("temporary failure"))
+            job_id = f"job_{uuid4().hex[:12]}"
             save_background_job(
                 BackgroundJob(
-                    id=f"job_{uuid4().hex[:12]}",
+                    id=job_id,
                     owner_id=DEMO_USER_ID,
                     job_type="evidence_file.post_upload_processing",
                     status="queued",
@@ -454,15 +457,16 @@ class ChargebackCopilotTests(unittest.TestCase):
                 )
             )
 
-            first = jobs.run_once("2026-05-21T12:00:00Z")[0]
+            first = next(job for job in jobs.run_once("2026-05-21T12:00:00Z", limit=1000) if job.id == job_id)
             self.assertEqual(first.status, "queued")
             self.assertEqual(first.attempts, 1)
             self.assertEqual(first.run_after, "2026-05-21T12:01:00Z")
             self.assertEqual(jobs.summarize_run([first]), {"processed": 1, "completed": 0, "retried": 1, "failed": 0})
 
-            self.assertEqual(jobs.run_once("2026-05-21T12:00:30Z"), [])
+            early = jobs.run_once("2026-05-21T12:00:30Z", limit=1000)
+            self.assertFalse(any(job.id == job_id for job in early))
 
-            second = jobs.run_once("2026-05-21T12:01:00Z")[0]
+            second = next(job for job in jobs.run_once("2026-05-21T12:01:00Z", limit=1000) if job.id == job_id)
             self.assertEqual(second.status, "failed")
             self.assertEqual(second.attempts, 2)
             self.assertIn("temporary failure", second.last_error)
@@ -470,6 +474,26 @@ class ChargebackCopilotTests(unittest.TestCase):
         finally:
             jobs._process_job = original_process
             jobs.MAX_JOB_ATTEMPTS = original_max_attempts
+
+    def test_background_job_health_flags_stale_queued_jobs(self):
+        init_db()
+        save_background_job(
+            BackgroundJob(
+                id=f"job_{uuid4().hex[:12]}",
+                owner_id=DEMO_USER_ID,
+                job_type="evidence_file.post_upload_processing",
+                status="queued",
+                attempts=1,
+                payload={"file_id": "missing"},
+                last_error="temporary failure",
+                run_after="2026-05-21T11:00:00Z",
+                created_at="2026-05-21T10:00:00Z",
+                updated_at="2026-05-21T10:00:00Z",
+            )
+        )
+        health = jobs.health("2026-05-21T12:00:00Z")
+        self.assertFalse(health["healthy"])
+        self.assertGreaterEqual(health["stale_queued"], 1)
 
     def test_evidence_file_download_and_delete_are_owner_checked(self):
         init_db()

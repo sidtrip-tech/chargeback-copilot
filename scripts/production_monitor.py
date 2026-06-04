@@ -43,6 +43,7 @@ def main() -> int:
         storage = checks.get("storage", {})
         email = checks.get("email", {})
         ai = checks.get("ai", {})
+        jobs = checks.get("jobs", {})
 
         if database.get("backend") != EXPECTED_DATABASE_BACKEND:
             return fail(f"database backend was {database.get('backend')!r}, expected {EXPECTED_DATABASE_BACKEND!r}")
@@ -64,6 +65,7 @@ def main() -> int:
                     "storage": storage,
                     "email": {"configured": email.get("configured"), "host": email.get("host")},
                     "ai": {"configured": ai.get("configured")},
+                    "jobs": jobs,
                 },
                 sort_keys=True,
             )

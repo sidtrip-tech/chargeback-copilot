@@ -1500,6 +1500,44 @@ def get_queued_jobs(now: str, limit: int = 10) -> List[BackgroundJob]:
         conn.close()
 
 
+def background_job_counts(now: str, stale_before: str, failed_since: str) -> dict[str, int]:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            row = conn.execute(
+                """
+                SELECT
+                    COUNT(*) FILTER (WHERE status = 'queued') AS queued,
+                    COUNT(*) FILTER (WHERE status = 'queued' AND run_after <= %s) AS runnable,
+                    COUNT(*) FILTER (WHERE status = 'queued' AND run_after <= %s) AS stale_queued,
+                    COUNT(*) FILTER (WHERE status = 'failed' AND updated_at >= %s) AS recent_failed,
+                    COUNT(*) FILTER (WHERE status = 'running') AS running
+                FROM background_jobs
+                """,
+                (now, stale_before, failed_since),
+            ).fetchone()
+            return {key: int(row[key] or 0) for key in ("queued", "runnable", "stale_queued", "recent_failed", "running")}
+        finally:
+            conn.close()
+    conn = connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT
+                SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) AS queued,
+                SUM(CASE WHEN status = 'queued' AND run_after <= ? THEN 1 ELSE 0 END) AS runnable,
+                SUM(CASE WHEN status = 'queued' AND run_after <= ? THEN 1 ELSE 0 END) AS stale_queued,
+                SUM(CASE WHEN status = 'failed' AND updated_at >= ? THEN 1 ELSE 0 END) AS recent_failed,
+                SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END) AS running
+            FROM background_jobs
+            """,
+            (now, stale_before, failed_since),
+        ).fetchone()
+        return {key: int(row[key] or 0) for key in ("queued", "runnable", "stale_queued", "recent_failed", "running")}
+    finally:
+        conn.close()
+
+
 def delete_account(user_id: str) -> None:
     if using_postgres():
         conn = connect_postgres()

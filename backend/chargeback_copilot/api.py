@@ -9,7 +9,7 @@ from .auth import DEMO_USER_ID, hash_password, new_auth_token, verify_password
 from .ai import ai_available, generate_live_ai_packet
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
 from .emailer import email_delivery_configured, email_health, send_password_reset_email, send_test_email, send_verification_email
-from .jobs import enqueue_job, list_jobs, run_once, summarize_run
+from .jobs import enqueue_job, health as jobs_health, list_jobs, run_once, summarize_run
 from .models import AuthToken, AuditLog, ConsumerDispute, EvidenceArtifact, ExportConsent, OutcomeFeedback, User
 from .packets import generate_template_packet
 from .planning import checklist_status, find_gaps, get_plan
@@ -82,6 +82,7 @@ def readiness() -> Dict[str, Any]:
         "storage": storage_healthcheck(),
         "email": email_health(),
         "ai": {"ok": True, "configured": ai_available()},
+        "jobs": jobs_health(utc_now()),
     }
     return {
         "ok": all(item["ok"] for item in checks.values()),

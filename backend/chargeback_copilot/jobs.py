@@ -6,13 +6,16 @@ from uuid import uuid4
 
 from .models import BackgroundJob
 from .extraction import extract_text
-from .store import get_evidence_file, get_queued_jobs, list_background_jobs, save_background_job, save_evidence_file
+from .store import background_job_counts, get_evidence_file, get_queued_jobs, list_background_jobs, save_background_job, save_evidence_file
 from .uploads import read_evidence_file
 
 
 MAX_JOB_ATTEMPTS = int(os.environ.get("MAX_JOB_ATTEMPTS", "3"))
 RETRY_BASE_SECONDS = int(os.environ.get("JOB_RETRY_BASE_SECONDS", "60"))
 RETRY_MAX_SECONDS = int(os.environ.get("JOB_RETRY_MAX_SECONDS", "3600"))
+STALE_QUEUED_SECONDS = int(os.environ.get("JOB_STALE_QUEUED_SECONDS", "900"))
+FAILED_LOOKBACK_SECONDS = int(os.environ.get("JOB_FAILED_LOOKBACK_SECONDS", "86400"))
+HEALTH_ENFORCED = os.environ.get("JOB_HEALTH_ENFORCED", "false").lower() in {"1", "true", "yes"}
 
 
 def _parse_utc(value: str) -> datetime:
@@ -55,6 +58,22 @@ def summarize_run(jobs: List[BackgroundJob]) -> Dict[str, int]:
         "completed": sum(1 for job in jobs if job.status == "completed"),
         "retried": sum(1 for job in jobs if job.status == "queued" and job.attempts > 0),
         "failed": sum(1 for job in jobs if job.status == "failed"),
+    }
+
+
+def health(now: str) -> Dict[str, Any]:
+    current = _parse_utc(now)
+    stale_before = _format_utc(current - timedelta(seconds=STALE_QUEUED_SECONDS))
+    failed_since = _format_utc(current - timedelta(seconds=FAILED_LOOKBACK_SECONDS))
+    counts = background_job_counts(now, stale_before, failed_since)
+    healthy = counts["recent_failed"] == 0 and counts["stale_queued"] == 0
+    return {
+        "ok": healthy if HEALTH_ENFORCED else True,
+        "healthy": healthy,
+        "enforced": HEALTH_ENFORCED,
+        **counts,
+        "stale_after_seconds": STALE_QUEUED_SECONDS,
+        "failed_lookback_seconds": FAILED_LOOKBACK_SECONDS,
     }
 
 

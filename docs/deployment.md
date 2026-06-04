@@ -213,8 +213,13 @@ Failed jobs are retried with exponential backoff. The defaults are:
 - `MAX_JOB_ATTEMPTS=3`
 - `JOB_RETRY_BASE_SECONDS=60`
 - `JOB_RETRY_MAX_SECONDS=3600`
+- `JOB_STALE_QUEUED_SECONDS=900`
+- `JOB_FAILED_LOOKBACK_SECONDS=86400`
+- `JOB_HEALTH_ENFORCED=true` in production
 
 If a job fails before the max attempt count, it returns to `queued` with a later `run_after` timestamp. After the max attempt count, it remains `failed` with `last_error` for debugging.
+
+`/api/readiness` includes a `jobs` check with queue counts, stale queued jobs, and recent failed jobs. In production, `JOB_HEALTH_ENFORCED=true` makes stale queued jobs or recent failures fail readiness so the production monitor catches background-processing issues.
 
 Each cron run emits JSON logs:
 

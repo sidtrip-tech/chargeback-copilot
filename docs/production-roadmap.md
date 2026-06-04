@@ -150,6 +150,7 @@ Current implementation status:
 - Added a Render cron service definition for automatic background job processing and protected the manual `/api/jobs/run` endpoint with `JOB_RUN_TOKEN`.
 - Added background job retry/backoff controls so transient upload-processing failures do not permanently strand evidence extraction.
 - Added structured cron-worker logs for processed, completed, retried, and failed background jobs.
+- Added background job health to readiness checks, with production enforcement for stale queued jobs and recent failures.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export
@@ -172,6 +173,7 @@ Exit criteria:
 - Text-like uploaded evidence files produce extracted text previews; PDFs/images remain queued for a future OCR service.
 - Background upload-processing jobs run automatically through a scheduled production job.
 - Failed background jobs retry with bounded exponential backoff and keep `last_error` for debugging.
+- Readiness and production monitoring surface stale queued jobs and recent job failures.
 - Packet exports include cited claims and evidence index.
 - Final export is blocked when required evidence or citation validation fails.
 - Export flow records the user's pre-export acknowledgement before opening the packet and blocks direct export requests without consent for the current packet.

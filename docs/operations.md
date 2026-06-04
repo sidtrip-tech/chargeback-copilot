@@ -10,6 +10,7 @@ Use `/api/readiness` manually after deployment or environment changes. It checks
 - evidence storage read/write/delete
 - email configuration status
 - AI configuration status
+- background job health
 
 For command-line monitoring:
 
@@ -18,6 +19,7 @@ MONITOR_BASE_URL=https://chargeback-copilot.onrender.com python3 scripts/product
 ```
 
 The monitor exits with a nonzero status if health/readiness fails, the database is not Postgres, storage is not S3, or email is not configured.
+With `JOB_HEALTH_ENFORCED=true`, readiness also fails when background jobs have recent failures or queued jobs remain stale beyond `JOB_STALE_QUEUED_SECONDS`.
 Set `MONITOR_EXPECT_AI_CONFIGURED=true` when live AI should be enabled in production.
 
 GitHub Actions also runs `.github/workflows/production-monitor.yml` every 30 minutes and supports manual runs through **Actions → Production Monitor → Run workflow**.

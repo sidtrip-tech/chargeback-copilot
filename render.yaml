@@ -55,6 +55,12 @@ services:
         value: 60
       - key: JOB_RETRY_MAX_SECONDS
         value: 3600
+      - key: JOB_STALE_QUEUED_SECONDS
+        value: 900
+      - key: JOB_FAILED_LOOKBACK_SECONDS
+        value: 86400
+      - key: JOB_HEALTH_ENFORCED
+        value: true
       - key: VIRUS_SCAN_ENABLED
         value: false
       - key: VIRUS_SCAN_MODE
@@ -93,6 +99,12 @@ services:
         value: 60
       - key: JOB_RETRY_MAX_SECONDS
         value: 3600
+      - key: JOB_STALE_QUEUED_SECONDS
+        value: 900
+      - key: JOB_FAILED_LOOKBACK_SECONDS
+        value: 86400
+      - key: JOB_HEALTH_ENFORCED
+        value: true
       - key: VIRUS_SCAN_ENABLED
         value: false
       - key: VIRUS_SCAN_MODE

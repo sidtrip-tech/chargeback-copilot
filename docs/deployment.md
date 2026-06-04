@@ -245,6 +245,8 @@ After fixing the underlying cause of a failed job, requeue it with:
 curl -X POST -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://your-render-service.onrender.com/api/admin/jobs/<job_id>/retry"
 ```
 
+Operator job list/retry calls emit structured logs (`operator.jobs.listed` and `operator.job.retry_requested`) with request ID, client IP, and safe job metadata. They do not log `JOB_RUN_TOKEN` or raw job payload values.
+
 ## Upload Scanning
 
 The app records a `scan_status` for each uploaded evidence file:

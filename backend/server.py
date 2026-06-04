@@ -193,6 +193,15 @@ class Handler(BaseHTTPRequestHandler):
         if provided != expected:
             raise PermissionError("Invalid job runner token.")
 
+    def _log_operator_event(self, event, **fields):
+        log_event(
+            event,
+            request_id=self._request_id(),
+            client_ip=self._client_key(),
+            path=urlparse(self.path).path,
+            **fields,
+        )
+
     def _client_key(self):
         forwarded_for = self.headers.get("X-Forwarded-For", "")
         if forwarded_for:
@@ -277,7 +286,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/admin/jobs":
                 self._validate_job_run_token()
                 limit = int(self._query_params().get("limit", ["50"])[0])
-                self._send_json(api.admin_job_status(limit))
+                payload = api.admin_job_status(limit)
+                self._log_operator_event("operator.jobs.listed", limit=limit, returned=len(payload["jobs"]))
+                self._send_json(payload)
                 return
             if path == "/api/auth/me":
                 self._send_json({"user": api.current_user(self._session_token())})
@@ -342,7 +353,16 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/admin/jobs/") and path.endswith("/retry"):
                 self._validate_job_run_token()
                 job_id = path.split("/")[4]
-                self._send_json(api.admin_retry_job(job_id))
+                payload = api.admin_retry_job(job_id)
+                self._log_operator_event(
+                    "operator.job.retry_requested",
+                    job_id=payload["job"]["id"],
+                    job_type=payload["job"]["job_type"],
+                    owner_id=payload["job"]["owner_id"],
+                    status=payload["job"]["status"],
+                    attempts=payload["job"]["attempts"],
+                )
+                self._send_json(payload)
                 return
             self._validate_origin()
             self._validate_csrf(path)

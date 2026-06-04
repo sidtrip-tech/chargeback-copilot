@@ -153,6 +153,7 @@ Current implementation status:
 - Added background job health to readiness checks, with production enforcement for stale queued jobs and recent failures.
 - Added a token-protected operator endpoint for recent background jobs, without returning raw job payload values.
 - Added a token-protected manual retry endpoint for failed background jobs after the underlying issue is fixed.
+- Added structured operator logs for job listing and manual retry actions without logging tokens or raw job payloads.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export

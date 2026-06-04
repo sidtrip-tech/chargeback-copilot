@@ -13,6 +13,7 @@ from chargeback_copilot.models import BackgroundJob, CitedClaim
 from chargeback_copilot import api
 from chargeback_copilot import ai
 from chargeback_copilot import jobs
+import server as server_module
 from server import Handler
 from chargeback_copilot.auth import DEMO_USER_ID
 from chargeback_copilot.dashboard import derived_status, evidence_progress, readiness_score
@@ -348,6 +349,32 @@ class ChargebackCopilotTests(unittest.TestCase):
                 os.environ.pop("JOB_RUN_TOKEN", None)
             else:
                 os.environ["JOB_RUN_TOKEN"] = original
+
+    def test_operator_event_logging_omits_tokens(self):
+        captured = []
+        original_logger = server_module.log_event
+        try:
+            server_module.log_event = lambda event, **fields: captured.append((event, fields))
+
+            class Headers(dict):
+                def get(self, key, default=None):
+                    return super().get(key, default)
+
+            handler = object.__new__(Handler)
+            handler.headers = Headers({"X-Job-Run-Token": "secret-token"})
+            handler.path = "/api/admin/jobs?limit=25"
+            handler.client_address = ("127.0.0.1", 1234)
+            handler.request_id = "req_test"
+            handler._log_operator_event("operator.jobs.listed", limit=25, returned=2)
+
+            self.assertEqual(captured[0][0], "operator.jobs.listed")
+            fields = captured[0][1]
+            self.assertEqual(fields["request_id"], "req_test")
+            self.assertEqual(fields["client_ip"], "127.0.0.1")
+            self.assertEqual(fields["limit"], 25)
+            self.assertNotIn("secret-token", str(fields))
+        finally:
+            server_module.log_event = original_logger
 
     def test_disputes_are_scoped_by_owner(self):
         init_db()

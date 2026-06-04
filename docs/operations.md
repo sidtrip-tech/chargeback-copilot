@@ -70,6 +70,13 @@ curl -X POST -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://chargeback-copilot.on
 
 Manual retry resets attempts to zero, clears `last_error`, and returns the job to `queued`.
 
+Operator job endpoints emit structured logs:
+
+- `operator.jobs.listed`
+- `operator.job.retry_requested`
+
+These logs include request ID, client IP, job IDs, and safe job metadata. They do not log `JOB_RUN_TOKEN` or raw job payload values.
+
 ## Structured Logs
 
 The backend writes JSON logs to stdout. Render captures these logs automatically.
@@ -80,6 +87,8 @@ Common events:
 - `jobs.run.completed`
 - `jobs.run.job_not_completed`
 - `jobs.run.error`
+- `operator.jobs.listed`
+- `operator.job.retry_requested`
 - `request.started`
 - `request.completed`
 - `request.error`

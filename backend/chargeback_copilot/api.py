@@ -18,6 +18,7 @@ from .store import (
     delete_account,
     delete_evidence_file,
     delete_session,
+    get_background_job,
     get_evidence_file,
     get_auth_token,
     get_dispute,
@@ -45,6 +46,7 @@ from .store import (
     save_evidence,
     save_evidence_file,
     save_export_consent,
+    save_background_job,
     save_outcome,
     save_packet,
     save_user,
@@ -464,23 +466,34 @@ def job_status(user_id: str) -> Dict[str, Any]:
 def admin_job_status(limit: int = 50) -> Dict[str, Any]:
     safe_limit = max(1, min(limit, 100))
     jobs = list_recent_background_jobs(safe_limit)
+    return {"jobs": [_safe_job(job) for job in jobs]}
+
+
+def _safe_job(job) -> Dict[str, Any]:
     return {
-        "jobs": [
-            {
-                "id": job.id,
-                "owner_id": job.owner_id,
-                "job_type": job.job_type,
-                "status": job.status,
-                "attempts": job.attempts,
-                "run_after": job.run_after,
-                "created_at": job.created_at,
-                "updated_at": job.updated_at,
-                "last_error": job.last_error,
-                "payload_keys": sorted(job.payload.keys()),
-            }
-            for job in jobs
-        ]
+        "id": job.id,
+        "owner_id": job.owner_id,
+        "job_type": job.job_type,
+        "status": job.status,
+        "attempts": job.attempts,
+        "run_after": job.run_after,
+        "created_at": job.created_at,
+        "updated_at": job.updated_at,
+        "last_error": job.last_error,
+        "payload_keys": sorted(job.payload.keys()),
     }
+
+
+def admin_retry_job(job_id: str) -> Dict[str, Any]:
+    job = get_background_job(job_id)
+    if not job:
+        raise ValueError("Background job not found.")
+    if job.status == "running":
+        raise ValueError("Running jobs cannot be retried manually.")
+    now = utc_now()
+    retried = replace(job, status="queued", attempts=0, last_error="", run_after=now, updated_at=now)
+    save_background_job(retried)
+    return {"job": _safe_job(retried)}
 
 
 def generate_packet(dispute_id: str, user_id: str = DEMO_USER_ID, mode: str = "template") -> Dict[str, Any]:

@@ -152,6 +152,7 @@ Current implementation status:
 - Added structured cron-worker logs for processed, completed, retried, and failed background jobs.
 - Added background job health to readiness checks, with production enforcement for stale queued jobs and recent failures.
 - Added a token-protected operator endpoint for recent background jobs, without returning raw job payload values.
+- Added a token-protected manual retry endpoint for failed background jobs after the underlying issue is fixed.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export
@@ -176,6 +177,7 @@ Exit criteria:
 - Failed background jobs retry with bounded exponential backoff and keep `last_error` for debugging.
 - Readiness and production monitoring surface stale queued jobs and recent job failures.
 - Operators can inspect recent background job status through a token-protected endpoint when readiness flags a problem.
+- Operators can manually requeue failed background jobs without database access.
 - Packet exports include cited claims and evidence index.
 - Final export is blocked when required evidence or citation validation fails.
 - Export flow records the user's pre-export acknowledgement before opening the packet and blocks direct export requests without consent for the current packet.

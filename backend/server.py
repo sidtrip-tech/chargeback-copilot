@@ -339,6 +339,11 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         self._log_request_started("POST", path)
         try:
+            if path.startswith("/api/admin/jobs/") and path.endswith("/retry"):
+                self._validate_job_run_token()
+                job_id = path.split("/")[4]
+                self._send_json(api.admin_retry_job(job_id))
+                return
             self._validate_origin()
             self._validate_csrf(path)
             if path == "/api/auth/demo":

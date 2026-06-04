@@ -239,6 +239,12 @@ The same token can inspect recent global background jobs without exposing raw pa
 curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://your-render-service.onrender.com/api/admin/jobs?limit=25"
 ```
 
+After fixing the underlying cause of a failed job, requeue it with:
+
+```bash
+curl -X POST -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://your-render-service.onrender.com/api/admin/jobs/<job_id>/retry"
+```
+
 ## Upload Scanning
 
 The app records a `scan_status` for each uploaded evidence file:

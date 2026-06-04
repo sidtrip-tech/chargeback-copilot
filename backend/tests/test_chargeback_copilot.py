@@ -33,6 +33,7 @@ from chargeback_copilot.security import (
 from chargeback_copilot.scanning import EICAR_SIGNATURE, UnsafeUpload, scan_upload
 from chargeback_copilot.uploads import clean_filename
 from chargeback_copilot.store import (
+    get_background_job,
     get_outcome,
     get_user_by_email,
     init_db,
@@ -518,6 +519,35 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertEqual(job["last_error"], "S3 timeout")
         self.assertEqual(job["payload_keys"], ["dispute_id", "file_id"])
         self.assertNotIn("file_sensitive", str(job))
+
+    def test_admin_retry_job_requeues_failed_job_without_payload_values(self):
+        init_db()
+        job_id = f"job_{uuid4().hex[:12]}"
+        save_background_job(
+            BackgroundJob(
+                id=job_id,
+                owner_id=DEMO_USER_ID,
+                job_type="evidence_file.post_upload_processing",
+                status="failed",
+                attempts=3,
+                payload={"file_id": "file_sensitive"},
+                last_error="S3 timeout",
+                run_after="2026-05-21T12:00:00Z",
+                created_at="2026-05-21T12:00:00Z",
+                updated_at="2026-05-21T12:05:00Z",
+            )
+        )
+        payload = api.admin_retry_job(job_id)
+        self.assertEqual(payload["job"]["status"], "queued")
+        self.assertEqual(payload["job"]["attempts"], 0)
+        self.assertEqual(payload["job"]["last_error"], "")
+        self.assertEqual(payload["job"]["payload_keys"], ["file_id"])
+        self.assertNotIn("file_sensitive", str(payload))
+
+        stored = get_background_job(job_id)
+        self.assertEqual(stored.status, "queued")
+        self.assertEqual(stored.attempts, 0)
+        self.assertEqual(stored.last_error, "")
 
     def test_evidence_file_download_and_delete_are_owner_checked(self):
         init_db()

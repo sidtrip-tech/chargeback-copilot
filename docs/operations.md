@@ -62,6 +62,14 @@ curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://chargeback-copilot.onrender.c
 
 The response includes job status, attempts, timestamps, `last_error`, and payload keys only. It intentionally omits raw payload values.
 
+After fixing the underlying problem, requeue a failed job with:
+
+```bash
+curl -X POST -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://chargeback-copilot.onrender.com/api/admin/jobs/<job_id>/retry"
+```
+
+Manual retry resets attempts to zero, clears `last_error`, and returns the job to `queued`.
+
 ## Structured Logs
 
 The backend writes JSON logs to stdout. Render captures these logs automatically.

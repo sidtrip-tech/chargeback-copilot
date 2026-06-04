@@ -458,6 +458,7 @@ class ChargebackCopilotTests(unittest.TestCase):
             self.assertEqual(first.status, "queued")
             self.assertEqual(first.attempts, 1)
             self.assertEqual(first.run_after, "2026-05-21T12:01:00Z")
+            self.assertEqual(jobs.summarize_run([first]), {"processed": 1, "completed": 0, "retried": 1, "failed": 0})
 
             self.assertEqual(jobs.run_once("2026-05-21T12:00:30Z"), [])
 
@@ -465,6 +466,7 @@ class ChargebackCopilotTests(unittest.TestCase):
             self.assertEqual(second.status, "failed")
             self.assertEqual(second.attempts, 2)
             self.assertIn("temporary failure", second.last_error)
+            self.assertEqual(jobs.summarize_run([second]), {"processed": 1, "completed": 0, "retried": 0, "failed": 1})
         finally:
             jobs._process_job = original_process
             jobs.MAX_JOB_ATTEMPTS = original_max_attempts

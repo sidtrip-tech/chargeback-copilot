@@ -49,6 +49,15 @@ def list_jobs(owner_id: str) -> Dict[str, Any]:
     return {"jobs": [asdict(job) for job in list_background_jobs(owner_id)]}
 
 
+def summarize_run(jobs: List[BackgroundJob]) -> Dict[str, int]:
+    return {
+        "processed": len(jobs),
+        "completed": sum(1 for job in jobs if job.status == "completed"),
+        "retried": sum(1 for job in jobs if job.status == "queued" and job.attempts > 0),
+        "failed": sum(1 for job in jobs if job.status == "failed"),
+    }
+
+
 def _process_post_upload_job(job: BackgroundJob) -> None:
     file_id = job.payload.get("file_id", "")
     file = get_evidence_file(job.owner_id, file_id)

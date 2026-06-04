@@ -40,6 +40,18 @@ When debugging a user report:
 3. Search for that request ID.
 4. Review the matching `request.started`, `request.error`, and `request.completed` JSON log lines.
 
+## Background Job Logs
+
+Open the `chargeback-copilot-jobs` cron service in Render and review its Logs tab.
+
+Useful events:
+
+- `jobs.run.completed`: per-run summary with `processed`, `completed`, `retried`, and `failed`.
+- `jobs.run.job_not_completed`: one retried or failed job with `job_id`, `job_type`, `attempts`, `run_after`, and `last_error`.
+- `jobs.run.error`: the worker crashed before it could summarize the run.
+
+If `retried` or `failed` is nonzero, search the same logs for `jobs.run.job_not_completed` and inspect `last_error`.
+
 ## Structured Logs
 
 The backend writes JSON logs to stdout. Render captures these logs automatically.
@@ -47,6 +59,9 @@ The backend writes JSON logs to stdout. Render captures these logs automatically
 Common events:
 
 - `server.started`
+- `jobs.run.completed`
+- `jobs.run.job_not_completed`
+- `jobs.run.error`
 - `request.started`
 - `request.completed`
 - `request.error`

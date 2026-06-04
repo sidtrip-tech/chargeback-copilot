@@ -216,6 +216,12 @@ Failed jobs are retried with exponential backoff. The defaults are:
 
 If a job fails before the max attempt count, it returns to `queued` with a later `run_after` timestamp. After the max attempt count, it remains `failed` with `last_error` for debugging.
 
+Each cron run emits JSON logs:
+
+- `jobs.run.completed` with `processed`, `completed`, `retried`, and `failed` counts.
+- `jobs.run.job_not_completed` for each retried or failed job, including `job_id`, `job_type`, `attempts`, `run_after`, and `last_error`.
+- `jobs.run.error` if the worker crashes before producing a normal run summary.
+
 The manual HTTP job endpoint `/api/jobs/run` is disabled unless `JOB_RUN_TOKEN` is set on the web service. If you do enable it for emergency/manual operations, call it with:
 
 ```bash

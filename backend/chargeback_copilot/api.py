@@ -9,7 +9,7 @@ from .auth import DEMO_USER_ID, hash_password, new_auth_token, verify_password
 from .ai import ai_available, generate_live_ai_packet
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
 from .emailer import email_delivery_configured, email_health, send_password_reset_email, send_test_email, send_verification_email
-from .jobs import enqueue_job, list_jobs, run_once
+from .jobs import enqueue_job, list_jobs, run_once, summarize_run
 from .models import AuthToken, AuditLog, ConsumerDispute, EvidenceArtifact, ExportConsent, OutcomeFeedback, User
 from .packets import generate_template_packet
 from .planning import checklist_status, find_gaps, get_plan
@@ -93,7 +93,7 @@ def readiness() -> Dict[str, Any]:
 
 def run_jobs() -> Dict[str, Any]:
     completed = run_once(utc_now())
-    return {"completed": [asdict(job) for job in completed]}
+    return {"summary": summarize_run(completed), "completed": [asdict(job) for job in completed]}
 
 
 def _public_user(user: User) -> Dict[str, Any]:

@@ -149,6 +149,7 @@ Current implementation status:
 - Added background text extraction for text-like uploaded evidence files, with unsupported binary files clearly marked until full OCR is added.
 - Added a Render cron service definition for automatic background job processing and protected the manual `/api/jobs/run` endpoint with `JOB_RUN_TOKEN`.
 - Added background job retry/backoff controls so transient upload-processing failures do not permanently strand evidence extraction.
+- Added structured cron-worker logs for processed, completed, retried, and failed background jobs.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export

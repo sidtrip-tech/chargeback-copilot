@@ -54,6 +54,14 @@ Useful events:
 
 If `retried` or `failed` is nonzero, search the same logs for `jobs.run.job_not_completed` and inspect `last_error`.
 
+For an operator API view of recent global jobs, set `JOB_RUN_TOKEN` on the web service and call:
+
+```bash
+curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://chargeback-copilot.onrender.com/api/admin/jobs?limit=25"
+```
+
+The response includes job status, attempts, timestamps, `last_error`, and payload keys only. It intentionally omits raw payload values.
+
 ## Structured Logs
 
 The backend writes JSON logs to stdout. Render captures these logs automatically.

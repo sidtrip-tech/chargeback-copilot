@@ -1442,6 +1442,54 @@ def list_background_jobs(owner_id: str, limit: int = 20) -> List[BackgroundJob]:
         conn.close()
 
 
+def list_recent_background_jobs(limit: int = 50) -> List[BackgroundJob]:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            return [
+                BackgroundJob(
+                    id=row["id"],
+                    owner_id=row["owner_id"] or "",
+                    job_type=row["job_type"],
+                    status=row["status"],
+                    attempts=row["attempts"],
+                    payload=row["payload"] if isinstance(row["payload"], dict) else json.loads(row["payload"]),
+                    last_error=row["last_error"] or "",
+                    run_after=row["run_after"].isoformat() if hasattr(row["run_after"], "isoformat") else row["run_after"],
+                    created_at=row["created_at"].isoformat() if hasattr(row["created_at"], "isoformat") else row["created_at"],
+                    updated_at=row["updated_at"].isoformat() if hasattr(row["updated_at"], "isoformat") else row["updated_at"],
+                )
+                for row in conn.execute(
+                    "SELECT * FROM background_jobs ORDER BY updated_at DESC LIMIT %s",
+                    (limit,),
+                ).fetchall()
+            ]
+        finally:
+            conn.close()
+    conn = connect()
+    try:
+        return [
+            BackgroundJob(
+                id=row["id"],
+                owner_id=row["owner_id"],
+                job_type=row["job_type"],
+                status=row["status"],
+                attempts=row["attempts"],
+                payload=json.loads(row["payload"]),
+                last_error=row["last_error"],
+                run_after=row["run_after"],
+                created_at=row["created_at"],
+                updated_at=row["updated_at"],
+            )
+            for row in conn.execute(
+                "SELECT * FROM background_jobs ORDER BY updated_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        ]
+    finally:
+        conn.close()
+
+
 def get_queued_jobs(now: str, limit: int = 10) -> List[BackgroundJob]:
     if using_postgres():
         conn = connect_postgres()

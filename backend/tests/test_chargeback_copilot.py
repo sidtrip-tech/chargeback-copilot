@@ -495,6 +495,30 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertFalse(health["healthy"])
         self.assertGreaterEqual(health["stale_queued"], 1)
 
+    def test_admin_job_status_lists_recent_jobs_without_payload_values(self):
+        init_db()
+        job_id = f"job_{uuid4().hex[:12]}"
+        save_background_job(
+            BackgroundJob(
+                id=job_id,
+                owner_id=DEMO_USER_ID,
+                job_type="evidence_file.post_upload_processing",
+                status="failed",
+                attempts=3,
+                payload={"file_id": "file_sensitive", "dispute_id": "case_sensitive"},
+                last_error="S3 timeout",
+                run_after="2026-05-21T12:00:00Z",
+                created_at="2026-05-21T12:00:00Z",
+                updated_at="2026-05-21T12:05:00Z",
+            )
+        )
+        payload = api.admin_job_status(limit=100)
+        job = next(item for item in payload["jobs"] if item["id"] == job_id)
+        self.assertEqual(job["status"], "failed")
+        self.assertEqual(job["last_error"], "S3 timeout")
+        self.assertEqual(job["payload_keys"], ["dispute_id", "file_id"])
+        self.assertNotIn("file_sensitive", str(job))
+
     def test_evidence_file_download_and_delete_are_owner_checked(self):
         init_db()
         detail = api.add_evidence_upload(

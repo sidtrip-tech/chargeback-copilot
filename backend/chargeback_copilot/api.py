@@ -34,6 +34,7 @@ from .store import (
     list_evidence,
     list_evidence_files,
     list_export_consents,
+    list_recent_background_jobs,
     list_outcomes,
     list_packets,
     mark_auth_token_used,
@@ -458,6 +459,28 @@ def delete_uploaded_evidence_file(file_id: str, user_id: str = DEMO_USER_ID) -> 
 
 def job_status(user_id: str) -> Dict[str, Any]:
     return list_jobs(user_id)
+
+
+def admin_job_status(limit: int = 50) -> Dict[str, Any]:
+    safe_limit = max(1, min(limit, 100))
+    jobs = list_recent_background_jobs(safe_limit)
+    return {
+        "jobs": [
+            {
+                "id": job.id,
+                "owner_id": job.owner_id,
+                "job_type": job.job_type,
+                "status": job.status,
+                "attempts": job.attempts,
+                "run_after": job.run_after,
+                "created_at": job.created_at,
+                "updated_at": job.updated_at,
+                "last_error": job.last_error,
+                "payload_keys": sorted(job.payload.keys()),
+            }
+            for job in jobs
+        ]
+    }
 
 
 def generate_packet(dispute_id: str, user_id: str = DEMO_USER_ID, mode: str = "template") -> Dict[str, Any]:

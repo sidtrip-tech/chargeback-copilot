@@ -233,6 +233,12 @@ The manual HTTP job endpoint `/api/jobs/run` is disabled unless `JOB_RUN_TOKEN` 
 curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" https://your-render-service.onrender.com/api/jobs/run
 ```
 
+The same token can inspect recent global background jobs without exposing raw payload values:
+
+```bash
+curl -H "X-Job-Run-Token: $JOB_RUN_TOKEN" "https://your-render-service.onrender.com/api/admin/jobs?limit=25"
+```
+
 ## Upload Scanning
 
 The app records a `scan_status` for each uploaded evidence file:

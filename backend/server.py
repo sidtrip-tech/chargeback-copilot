@@ -5,6 +5,7 @@ import os
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs
 from urllib.parse import quote
 from urllib.parse import urlparse
 
@@ -131,6 +132,9 @@ class Handler(BaseHTTPRequestHandler):
             "content_type": file_item.type or "application/octet-stream",
             "data": file_data,
         }
+
+    def _query_params(self):
+        return parse_qs(urlparse(self.path).query)
 
     def _handle_error(self, exc):
         if isinstance(exc, PermissionError):
@@ -269,6 +273,11 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/jobs/run":
                 self._validate_job_run_token()
                 self._send_json(api.run_jobs())
+                return
+            if path == "/api/admin/jobs":
+                self._validate_job_run_token()
+                limit = int(self._query_params().get("limit", ["50"])[0])
+                self._send_json(api.admin_job_status(limit))
                 return
             if path == "/api/auth/me":
                 self._send_json({"user": api.current_user(self._session_token())})

@@ -139,6 +139,17 @@ class OutcomeFeedback:
 
 
 @dataclass(frozen=True)
+class ExportConsent:
+    packet_id: str
+    dispute_id: str
+    owner_id: str
+    truthful: bool
+    reviewed: bool
+    no_advice: bool
+    acknowledged_at: str
+
+
+@dataclass(frozen=True)
 class AuditLog:
     id: str
     user_id: str

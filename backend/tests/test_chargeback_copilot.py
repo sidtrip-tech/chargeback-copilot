@@ -167,23 +167,40 @@ class ChargebackCopilotTests(unittest.TestCase):
 
     def test_export_consent_requires_all_acknowledgements(self):
         init_db()
-        api.generate_packet("case_sub_001", user_id=DEMO_USER_ID, mode="template")
+        dispute_id = f"case_{uuid4().hex}"
+        save_dispute(replace(dispute("case_sub_001"), id=dispute_id), DEMO_USER_ID)
+        for artifact in evidence("case_sub_001"):
+            save_evidence(
+                replace(artifact, id=f"{artifact.id}_{uuid4().hex[:8]}", dispute_id=dispute_id),
+                DEMO_USER_ID,
+            )
+        api.generate_packet(dispute_id, user_id=DEMO_USER_ID, mode="template")
+
+        with self.assertRaises(ValueError):
+            api.export_packet(dispute_id, user_id=DEMO_USER_ID)
 
         with self.assertRaises(ValueError):
             api.record_export_consent(
-                "case_sub_001",
+                dispute_id,
                 {"truthful": True, "reviewed": True, "no_advice": False},
                 user_id=DEMO_USER_ID,
             )
 
         result = api.record_export_consent(
-            "case_sub_001",
+            dispute_id,
             {"truthful": True, "reviewed": True, "no_advice": True},
             user_id=DEMO_USER_ID,
         )
         self.assertTrue(result["ok"])
         logs = list_audit_logs(DEMO_USER_ID)
-        self.assertTrue(any(entry.action == "packet.export_consent_acknowledged" for entry in logs))
+        self.assertTrue(
+            any(
+                entry.action == "packet.export_consent_acknowledged" and entry.entity_id == dispute_id
+                for entry in logs
+            )
+        )
+        html = api.export_packet(dispute_id, user_id=DEMO_USER_ID)
+        self.assertIn("Save as PDF", html)
 
     def test_readiness_score_and_progress(self):
         item = dispute("case_sub_001")
@@ -346,6 +363,7 @@ class ChargebackCopilotTests(unittest.TestCase):
         exported = api.export_account_data(user_id)
         self.assertEqual(exported["user"]["email"], email)
         self.assertEqual(len(exported["disputes"]), 1)
+        self.assertIn("export_consents", exported)
         self.assertNotIn("password_hash", exported["user"])
 
         api.delete_account_data(user_id, {"confirmation": "DELETE"})

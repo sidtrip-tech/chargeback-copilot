@@ -23,6 +23,7 @@ from .models import (
     ConsumerDispute,
     EvidenceArtifact,
     EvidenceFile,
+    ExportConsent,
     EvidenceGap,
     OutcomeFeedback,
     Packet,
@@ -107,6 +108,15 @@ def init_db(db_path: Path = DB_PATH) -> None:
                 dispute_id TEXT PRIMARY KEY,
                 owner_id TEXT NOT NULL,
                 payload TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS export_consents (
+                packet_id TEXT PRIMARY KEY,
+                dispute_id TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
+                truthful INTEGER NOT NULL,
+                reviewed INTEGER NOT NULL,
+                no_advice INTEGER NOT NULL,
+                acknowledged_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS audit_logs (
                 id TEXT PRIMARY KEY,
@@ -237,6 +247,18 @@ def _ensure_demo_user(conn: sqlite3.Connection) -> None:
 def _backfill_owner_ids(conn: sqlite3.Connection) -> None:
     for table in ("disputes", "evidence", "packets", "outcomes"):
         conn.execute(f"UPDATE {table} SET owner_id = ? WHERE owner_id IS NULL OR owner_id = ''", (DEMO_USER_ID,))
+
+
+def _load_export_consent(row: Any) -> ExportConsent:
+    return ExportConsent(
+        packet_id=row["packet_id"],
+        dispute_id=row["dispute_id"],
+        owner_id=row["owner_id"],
+        truthful=bool(row["truthful"]),
+        reviewed=bool(row["reviewed"]),
+        no_advice=bool(row["no_advice"]),
+        acknowledged_at=row["acknowledged_at"].isoformat() if hasattr(row["acknowledged_at"], "isoformat") else row["acknowledged_at"],
+    )
 
 
 def _load_payload(payload: Any):
@@ -1094,6 +1116,108 @@ def delete_evidence_file(owner_id: str, file_id: str, deleted_at: str) -> None:
         conn.close()
 
 
+def save_export_consent(consent: ExportConsent) -> None:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            conn.execute(
+                """
+                INSERT INTO export_consents (
+                    packet_id, dispute_id, owner_id, truthful, reviewed, no_advice, acknowledged_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (packet_id) DO UPDATE SET
+                    truthful = EXCLUDED.truthful,
+                    reviewed = EXCLUDED.reviewed,
+                    no_advice = EXCLUDED.no_advice,
+                    acknowledged_at = EXCLUDED.acknowledged_at
+                """,
+                (
+                    consent.packet_id,
+                    consent.dispute_id,
+                    consent.owner_id,
+                    consent.truthful,
+                    consent.reviewed,
+                    consent.no_advice,
+                    consent.acknowledged_at,
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return
+    conn = connect()
+    try:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO export_consents (
+                packet_id, dispute_id, owner_id, truthful, reviewed, no_advice, acknowledged_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                consent.packet_id,
+                consent.dispute_id,
+                consent.owner_id,
+                int(consent.truthful),
+                int(consent.reviewed),
+                int(consent.no_advice),
+                consent.acknowledged_at,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_export_consent(packet_id: str, owner_id: str = DEMO_USER_ID) -> Optional[ExportConsent]:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            row = conn.execute(
+                "SELECT * FROM export_consents WHERE packet_id = %s AND owner_id = %s",
+                (packet_id, owner_id),
+            ).fetchone()
+            return _load_export_consent(row) if row else None
+        finally:
+            conn.close()
+    conn = connect()
+    try:
+        row = conn.execute(
+            "SELECT * FROM export_consents WHERE packet_id = ? AND owner_id = ?",
+            (packet_id, owner_id),
+        ).fetchone()
+        return _load_export_consent(row) if row else None
+    finally:
+        conn.close()
+
+
+def list_export_consents(owner_id: str) -> List[ExportConsent]:
+    if using_postgres():
+        conn = connect_postgres()
+        try:
+            return [
+                _load_export_consent(row)
+                for row in conn.execute(
+                    "SELECT * FROM export_consents WHERE owner_id = %s ORDER BY acknowledged_at DESC",
+                    (owner_id,),
+                ).fetchall()
+            ]
+        finally:
+            conn.close()
+    conn = connect()
+    try:
+        return [
+            _load_export_consent(row)
+            for row in conn.execute(
+                "SELECT * FROM export_consents WHERE owner_id = ? ORDER BY acknowledged_at DESC",
+                (owner_id,),
+            ).fetchall()
+        ]
+    finally:
+        conn.close()
+
+
 def list_outcomes(owner_id: str) -> List[OutcomeFeedback]:
     if using_postgres():
         conn = connect_postgres()
@@ -1383,7 +1507,7 @@ def delete_account(user_id: str) -> None:
         return
     conn = connect()
     try:
-        for table in ("sessions", "auth_tokens", "outcomes", "packets", "evidence_files", "evidence", "disputes", "audit_logs"):
+        for table in ("sessions", "auth_tokens", "outcomes", "export_consents", "packets", "evidence_files", "evidence", "disputes", "audit_logs"):
             key = "user_id" if table in {"sessions", "auth_tokens", "audit_logs"} else "owner_id"
             conn.execute(f"DELETE FROM {table} WHERE {key} = ?", (user_id,))
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))

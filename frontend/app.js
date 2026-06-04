@@ -824,7 +824,7 @@ async function confirmExportConsent(event) {
     body: JSON.stringify(body),
   });
   closeExportConsent();
-  window.open(`/api/disputes/${state.activeId}/export`, "_blank", "noopener");
+  window.location.assign(`/api/disputes/${state.activeId}/export`);
 }
 
 async function saveOutcome(event) {

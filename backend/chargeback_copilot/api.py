@@ -10,7 +10,7 @@ from .ai import ai_available, generate_live_ai_packet
 from .dashboard import derived_status, evidence_progress, next_step_prompts, readiness_score
 from .emailer import email_delivery_configured, email_health, send_password_reset_email, send_test_email, send_verification_email
 from .jobs import enqueue_job, list_jobs, run_once
-from .models import AuthToken, AuditLog, ConsumerDispute, EvidenceArtifact, OutcomeFeedback, User
+from .models import AuthToken, AuditLog, ConsumerDispute, EvidenceArtifact, ExportConsent, OutcomeFeedback, User
 from .packets import generate_template_packet
 from .planning import checklist_status, find_gaps, get_plan
 from .store import (
@@ -22,6 +22,7 @@ from .store import (
     get_auth_token,
     get_dispute,
     get_latest_packet,
+    get_export_consent,
     get_outcome,
     get_session_user,
     get_user,
@@ -32,6 +33,7 @@ from .store import (
     list_disputes,
     list_evidence,
     list_evidence_files,
+    list_export_consents,
     list_outcomes,
     list_packets,
     mark_auth_token_used,
@@ -41,6 +43,7 @@ from .store import (
     save_dispute,
     save_evidence,
     save_evidence_file,
+    save_export_consent,
     save_outcome,
     save_packet,
     save_user,
@@ -242,6 +245,7 @@ def export_account_data(user_id: str) -> Dict[str, Any]:
     evidence_files = list_evidence_files(user_id)
     packets = list_packets(user_id)
     outcomes = list_outcomes(user_id)
+    export_consents = list_export_consents(user_id)
     audit_logs = list_audit_logs(user_id)
     _audit(user_id, "account.exported", "user", user_id)
     return {
@@ -252,6 +256,7 @@ def export_account_data(user_id: str) -> Dict[str, Any]:
         "evidence_files": [asdict(item) for item in evidence_files],
         "packets": [asdict(item) for item in packets],
         "outcomes": [asdict(item) for item in outcomes],
+        "export_consents": [asdict(item) for item in export_consents],
         "audit_logs": [asdict(item) for item in audit_logs],
     }
 
@@ -528,6 +533,17 @@ def record_export_consent(dispute_id: str, payload: Dict[str, Any], user_id: str
     missing = [message for key, message in required.items() if payload.get(key) is not True]
     if missing:
         raise ValueError(" ".join(missing))
+    save_export_consent(
+        ExportConsent(
+            packet_id=packet["id"],
+            dispute_id=dispute_id,
+            owner_id=user_id,
+            truthful=True,
+            reviewed=True,
+            no_advice=True,
+            acknowledged_at=utc_now(),
+        )
+    )
     _audit(
         user_id,
         "packet.export_consent_acknowledged",
@@ -551,6 +567,9 @@ def export_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> str:
         raise ValueError("Generate a dispute packet before export.")
     if not data["export_ready"]:
         raise ValueError(data["export_reason"])
+    consent = get_export_consent(packet["id"], user_id)
+    if not consent or not (consent.truthful and consent.reviewed and consent.no_advice):
+        raise ValueError("Confirm the pre-export acknowledgements before exporting this packet.")
     _audit(user_id, "packet.exported", "dispute", dispute_id, {"format": "html"})
 
     dispute = data["dispute"]

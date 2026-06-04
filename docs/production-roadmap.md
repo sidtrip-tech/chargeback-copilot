@@ -145,7 +145,7 @@ Current implementation status:
 - Added a synthetic production monitor script for health/readiness dependency checks.
 - Added a scheduled GitHub Actions production monitor that runs every 30 minutes and can be triggered manually.
 - Added optional `live_ai` packet generation through the OpenAI Responses API with structured JSON output, citation validation, and template fallback.
-- Added a required pre-export acknowledgement for truthful information, reviewed citations, and no legal/financial/banking/issuer advice, with an audit-log entry before export.
+- Added a required pre-export acknowledgement for truthful information, reviewed citations, and no legal/financial/banking/issuer advice, with persisted consent and an audit-log entry before export.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export
@@ -167,7 +167,7 @@ Exit criteria:
 - Users can safely upload, preview, use, and delete evidence files.
 - Packet exports include cited claims and evidence index.
 - Final export is blocked when required evidence or citation validation fails.
-- Export flow records the user's pre-export acknowledgement before opening the packet.
+- Export flow records the user's pre-export acknowledgement before opening the packet and blocks direct export requests without consent for the current packet.
 
 ### Phase 3: AI-Assisted Preparation
 

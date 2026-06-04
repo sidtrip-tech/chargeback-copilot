@@ -228,7 +228,7 @@ Every factual claim must cite one or more evidence artifacts. If evidence is mis
 
 The user exports the packet as Markdown, HTML, or PDF-ready content. The MVP does not submit the dispute directly.
 
-Before export, the user must acknowledge that the packet is truthful to the best of their knowledge, that they reviewed generated claims and citation IDs, and that Chargeback Copilot is preparation support rather than legal, financial, banking, or issuer advice. The acknowledgement should be recorded for auditability.
+Before export, the user must acknowledge that the packet is truthful to the best of their knowledge, that they reviewed generated claims and citation IDs, and that Chargeback Copilot is preparation support rather than legal, financial, banking, or issuer advice. The acknowledgement should be recorded for auditability and export should be blocked server-side until the latest generated packet has this acknowledgement.
 
 ### 9. Record Outcome Feedback
 
@@ -328,6 +328,7 @@ The user may add an optional note about what happened. Outcome feedback is for p
 - Include evidence index and citation IDs.
 - Include a disclaimer that the packet is preparation support, not legal or financial advice.
 - Require a pre-export acknowledgement that information is truthful to the best of the user's knowledge, citations were reviewed, and the product is not legal, financial, banking, or issuer advice.
+- Block direct export requests unless the current generated packet has a persisted pre-export acknowledgement.
 
 ### Outcome Feedback
 
@@ -590,6 +591,6 @@ Current foundation work has begun with local session-based access, user-owned pa
 - Dashboard number cards are contextual by tab and do not show the same global metrics across all statuses.
 - Outcome feedback is absent from In Progress and available only for Completed packets.
 - Outcome feedback is never represented as prediction, guarantee, legal advice, financial advice, or issuer guidance.
-- Export requires a user acknowledgement for truthful information, reviewed citations, and no legal, financial, banking, or issuer advice before opening the packet.
+- Export requires a persisted user acknowledgement for truthful information, reviewed citations, and no legal, financial, banking, or issuer advice before opening the packet, including direct export URL requests.
 - Production roadmap exists and describes authentication, user data boundaries, Postgres, secure evidence uploads, object storage, background jobs, PDF export, compliance, monitoring, deployment, and test strategy.
 - Production build remains preparation/export only and does not introduce direct bank submission.

@@ -29,7 +29,16 @@ Optional repository variable:
 ```text
 MONITOR_BASE_URL=https://chargeback-copilot.onrender.com
 MONITOR_EXPECT_AI_CONFIGURED=true
+MONITOR_JOB_DIAGNOSTICS_LIMIT=10
 ```
+
+Optional repository secret:
+
+```text
+JOB_RUN_TOKEN=<same value configured on the Render web service>
+```
+
+When `JOB_RUN_TOKEN` is available and readiness fails because background jobs are unhealthy, the production monitor prints sanitized recent job diagnostics from `/api/admin/jobs`.
 
 ## Request IDs
 

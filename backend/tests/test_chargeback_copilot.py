@@ -1,6 +1,9 @@
 import sys
 import unittest
 import os
+import contextlib
+import importlib.util
+import io
 from dataclasses import replace
 from uuid import uuid4
 from pathlib import Path
@@ -375,6 +378,34 @@ class ChargebackCopilotTests(unittest.TestCase):
             self.assertNotIn("secret-token", str(fields))
         finally:
             server_module.log_event = original_logger
+
+    def test_production_monitor_prints_sanitized_job_diagnostics(self):
+        spec = importlib.util.spec_from_file_location("production_monitor", ROOT.parent / "scripts" / "production_monitor.py")
+        monitor = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(monitor)
+
+        original_token = monitor.JOB_RUN_TOKEN
+        original_fetch = monitor.fetch_json
+        try:
+            monitor.JOB_RUN_TOKEN = "secret-token"
+            monitor.JOB_DIAGNOSTICS_LIMIT = 2
+
+            def fake_fetch(path, extra_headers=None):
+                self.assertEqual(path, "/api/admin/jobs?limit=2")
+                self.assertEqual(extra_headers, {"X-Job-Run-Token": "secret-token"})
+                return {"jobs": [{"id": "job_1", "payload_keys": ["file_id"], "last_error": "S3 timeout"}]}
+
+            monitor.fetch_json = fake_fetch
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                monitor.maybe_print_job_diagnostics({"healthy": False, "recent_failed": 1})
+            output = stderr.getvalue()
+            self.assertIn("JOB DIAGNOSTICS", output)
+            self.assertIn("job_1", output)
+            self.assertNotIn("secret-token", output)
+        finally:
+            monitor.JOB_RUN_TOKEN = original_token
+            monitor.fetch_json = original_fetch
 
     def test_disputes_are_scoped_by_owner(self):
         init_db()

@@ -155,6 +155,7 @@ Current implementation status:
 - Added a token-protected manual retry endpoint for failed background jobs after the underlying issue is fixed.
 - Added structured operator logs for job listing and manual retry actions without logging tokens or raw job payloads.
 - Added an operator helper script for listing and retrying background jobs without hand-building curl requests.
+- Added optional background-job diagnostics to the production monitor when `JOB_RUN_TOKEN` is available.
 - Remaining Phase 1 work: hosted authentication or transactional email configuration, staging Postgres integration testing after deploy, and production environment setup.
 
 ### Phase 2: Evidence And Export

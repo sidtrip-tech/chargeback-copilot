@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+from typing import Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -13,13 +14,39 @@ EXPECTED_STORAGE_BACKEND = os.environ.get("MONITOR_EXPECTED_STORAGE_BACKEND", "s
 EXPECTED_DATABASE_BACKEND = os.environ.get("MONITOR_EXPECTED_DATABASE_BACKEND", "postgres")
 EXPECT_EMAIL_CONFIGURED = os.environ.get("MONITOR_EXPECT_EMAIL_CONFIGURED", "true").lower() in {"1", "true", "yes"}
 EXPECT_AI_CONFIGURED = os.environ.get("MONITOR_EXPECT_AI_CONFIGURED", "false").lower() in {"1", "true", "yes"}
+JOB_RUN_TOKEN = os.environ.get("JOB_RUN_TOKEN", "")
+JOB_DIAGNOSTICS_LIMIT = int(os.environ.get("MONITOR_JOB_DIAGNOSTICS_LIMIT", "10"))
 
 
-def fetch_json(path: str) -> dict:
-    request = Request(f"{BASE_URL}{path}", headers={"User-Agent": "chargeback-copilot-monitor/1.0"})
+def fetch_json(path: str, extra_headers: Optional[dict[str, str]] = None) -> dict:
+    headers = {"User-Agent": "chargeback-copilot-monitor/1.0", **(extra_headers or {})}
+    request = Request(f"{BASE_URL}{path}", headers=headers)
     with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
         body = response.read().decode("utf-8")
         return json.loads(body)
+
+
+def maybe_print_job_diagnostics(jobs: dict) -> None:
+    if jobs.get("healthy", True) or not JOB_RUN_TOKEN:
+        return
+    try:
+        payload = fetch_json(
+            f"/api/admin/jobs?limit={JOB_DIAGNOSTICS_LIMIT}",
+            extra_headers={"X-Job-Run-Token": JOB_RUN_TOKEN},
+        )
+        print(
+            "JOB DIAGNOSTICS: "
+            + json.dumps(
+                {
+                    "jobs_health": jobs,
+                    "recent_jobs": payload.get("jobs", []),
+                },
+                sort_keys=True,
+            ),
+            file=sys.stderr,
+        )
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        print(f"JOB DIAGNOSTICS UNAVAILABLE: {exc}", file=sys.stderr)
 
 
 def fail(message: str) -> int:
@@ -35,15 +62,16 @@ def main() -> int:
             return fail("/api/health did not return ok=true")
 
         readiness = fetch_json("/api/readiness")
-        if not readiness.get("ok"):
-            return fail("/api/readiness did not return ok=true")
-
         checks = readiness.get("checks", {})
         database = checks.get("database", {})
         storage = checks.get("storage", {})
         email = checks.get("email", {})
         ai = checks.get("ai", {})
         jobs = checks.get("jobs", {})
+
+        if not readiness.get("ok"):
+            maybe_print_job_diagnostics(jobs)
+            return fail("/api/readiness did not return ok=true")
 
         if database.get("backend") != EXPECTED_DATABASE_BACKEND:
             return fail(f"database backend was {database.get('backend')!r}, expected {EXPECTED_DATABASE_BACKEND!r}")

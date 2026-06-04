@@ -20,4 +20,6 @@ jobs:
           MONITOR_EXPECTED_STORAGE_BACKEND: s3
           MONITOR_EXPECT_EMAIL_CONFIGURED: "true"
           MONITOR_EXPECT_AI_CONFIGURED: ${{ vars.MONITOR_EXPECT_AI_CONFIGURED || 'false' }}
+          MONITOR_JOB_DIAGNOSTICS_LIMIT: ${{ vars.MONITOR_JOB_DIAGNOSTICS_LIMIT || '10' }}
+          JOB_RUN_TOKEN: ${{ secrets.JOB_RUN_TOKEN }}
         run: python scripts/production_monitor.py

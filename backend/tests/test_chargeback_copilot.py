@@ -1,5 +1,6 @@
 import sys
 import unittest
+from dataclasses import replace
 from uuid import uuid4
 from pathlib import Path
 
@@ -35,6 +36,7 @@ from chargeback_copilot.store import (
     list_audit_logs,
     list_disputes,
     list_evidence_files,
+    save_evidence,
     save_dispute,
     save_outcome,
 )
@@ -85,15 +87,34 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertTrue(cited.issubset(source_ids))
 
     def test_live_ai_generation_falls_back_when_unconfigured(self):
-        init_db()
-        detail = api.generate_packet("case_sub_001", user_id=DEMO_USER_ID, mode="live_ai")
-        self.assertTrue(detail["packet"]["fallback_used"])
-        self.assertEqual(detail["packet"]["mode"], "live_ai")
-        self.assertIn("not configured", detail["packet"]["fallback_reason"])
-        self.assertEqual(detail["packet"]["generation_metadata"]["generator"], "template")
-        generated = next(entry for entry in list_audit_logs(DEMO_USER_ID) if entry.action == "packet.generated")
-        self.assertEqual(generated.metadata["requested_mode"], "live_ai")
-        self.assertEqual(generated.metadata["fallback_used"], "True")
+        original_enabled = ai.AI_ENABLED
+        original_key = ai.OPENAI_API_KEY
+        try:
+            ai.AI_ENABLED = False
+            ai.OPENAI_API_KEY = ""
+            init_db()
+            dispute_id = f"case_{uuid4().hex}"
+            save_dispute(replace(dispute("case_sub_001"), id=dispute_id), DEMO_USER_ID)
+            for artifact in evidence("case_sub_001"):
+                save_evidence(
+                    replace(artifact, id=f"{artifact.id}_{uuid4().hex[:8]}", dispute_id=dispute_id),
+                    DEMO_USER_ID,
+                )
+            detail = api.generate_packet(dispute_id, user_id=DEMO_USER_ID, mode="live_ai")
+            self.assertTrue(detail["packet"]["fallback_used"])
+            self.assertEqual(detail["packet"]["mode"], "live_ai")
+            self.assertIn("not configured", detail["packet"]["fallback_reason"])
+            self.assertEqual(detail["packet"]["generation_metadata"]["generator"], "template")
+            generated = next(
+                entry
+                for entry in list_audit_logs(DEMO_USER_ID)
+                if entry.action == "packet.generated" and entry.metadata.get("dispute_id") == dispute_id
+            )
+            self.assertEqual(generated.metadata["requested_mode"], "live_ai")
+            self.assertEqual(generated.metadata["fallback_used"], "True")
+        finally:
+            ai.AI_ENABLED = original_enabled
+            ai.OPENAI_API_KEY = original_key
 
     def test_live_ai_generation_blocks_invalid_citations(self):
         original_enabled = ai.AI_ENABLED
@@ -143,6 +164,26 @@ class ChargebackCopilotTests(unittest.TestCase):
         self.assertFalse(export_readiness([], False, False)[0])
         self.assertFalse(export_readiness([], True, True)[0])
         self.assertTrue(export_readiness([], False, True)[0])
+
+    def test_export_consent_requires_all_acknowledgements(self):
+        init_db()
+        api.generate_packet("case_sub_001", user_id=DEMO_USER_ID, mode="template")
+
+        with self.assertRaises(ValueError):
+            api.record_export_consent(
+                "case_sub_001",
+                {"truthful": True, "reviewed": True, "no_advice": False},
+                user_id=DEMO_USER_ID,
+            )
+
+        result = api.record_export_consent(
+            "case_sub_001",
+            {"truthful": True, "reviewed": True, "no_advice": True},
+            user_id=DEMO_USER_ID,
+        )
+        self.assertTrue(result["ok"])
+        logs = list_audit_logs(DEMO_USER_ID)
+        self.assertTrue(any(entry.action == "packet.export_consent_acknowledged" for entry in logs))
 
     def test_readiness_score_and_progress(self):
         item = dispute("case_sub_001")

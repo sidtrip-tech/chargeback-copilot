@@ -344,6 +344,7 @@ function renderStartNew() {
   $("generateBtn").disabled = true;
   $("generationMode").disabled = true;
   $("exportBtn").classList.add("disabled");
+  $("exportBtn").disabled = true;
   renderCategorySelection(state.selectedStartCategory);
 }
 
@@ -351,6 +352,7 @@ function renderEmptyDetail() {
   $("generateBtn").disabled = true;
   $("generationMode").disabled = true;
   $("exportBtn").classList.add("disabled");
+  $("exportBtn").disabled = true;
   $("completedView").classList.add("hidden");
   $("prepView").classList.remove("hidden");
   $("disputeSummary").innerHTML = "";
@@ -369,7 +371,7 @@ function renderDetail() {
   const isCompleted = detail.derived_status === "completed";
   $("generateBtn").disabled = isCompleted;
   $("generationMode").disabled = isCompleted;
-  $("exportBtn").href = `/api/disputes/${dispute.id}/export`;
+  $("exportBtn").disabled = !detail.export_ready;
   $("exportBtn").classList.toggle("disabled", !detail.export_ready);
   $("completedView").classList.toggle("hidden", !isCompleted);
   $("prepView").classList.toggle("hidden", isCompleted);
@@ -420,7 +422,8 @@ function renderCompletedDetail(detail) {
   const packet = detail.packet;
   $("completedTitle").textContent = `${dispute.merchant_name} packet is ready`;
   $("completedSummary").textContent = "Export the packet, submit through your issuer's official channel, then come back to track the real-life result.";
-  $("completedExportBtn").href = `/api/disputes/${dispute.id}/export`;
+  $("completedExportBtn").disabled = !detail.export_ready;
+  $("completedExportBtn").classList.toggle("disabled", !detail.export_ready);
   $("completedSnapshot").innerHTML = [
     ["Merchant", dispute.merchant_name],
     ["Amount", money(dispute.amount, dispute.currency)],
@@ -788,6 +791,42 @@ async function generatePacket() {
   }
 }
 
+function closeExportConsent() {
+  const dialog = $("exportConsentDialog");
+  $("exportConsentForm").reset();
+  if (dialog.open) dialog.close();
+}
+
+function openExportConsent() {
+  const detail = state.detail;
+  if (!state.activeId || !detail) {
+    showNotice("Select a completed packet before exporting.");
+    return;
+  }
+  if (!detail.export_ready) {
+    showNotice(detail.export_reason || "This packet is not ready to export yet.");
+    return;
+  }
+  $("exportConsentDialog").showModal();
+}
+
+async function confirmExportConsent(event) {
+  event.preventDefault();
+  if (!state.activeId) return;
+  const form = new FormData(event.currentTarget);
+  const body = {
+    truthful: form.get("truthful") === "on",
+    reviewed: form.get("reviewed") === "on",
+    no_advice: form.get("no_advice") === "on",
+  };
+  await request(`/api/disputes/${state.activeId}/export-consent`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  closeExportConsent();
+  window.open(`/api/disputes/${state.activeId}/export`, "_blank", "noopener");
+}
+
 async function saveOutcome(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
@@ -814,6 +853,10 @@ document.querySelectorAll(".tab").forEach((button) => button.addEventListener("c
 $("newCaseForm").addEventListener("submit", (event) => createCase(event).catch((error) => showNotice(error.message)));
 $("evidenceForm").addEventListener("submit", (event) => addEvidence(event).catch((error) => showNotice(error.message)));
 $("generateBtn").addEventListener("click", () => generatePacket().catch((error) => showNotice(error.message)));
+$("exportBtn").addEventListener("click", openExportConsent);
+$("completedExportBtn").addEventListener("click", openExportConsent);
+$("cancelExportBtn").addEventListener("click", closeExportConsent);
+$("exportConsentForm").addEventListener("submit", (event) => confirmExportConsent(event).catch((error) => showNotice(error.message)));
 
 const START_CATEGORY_EVIDENCE = {
   canceled_subscription: {

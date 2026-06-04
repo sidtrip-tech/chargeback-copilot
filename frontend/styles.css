@@ -867,6 +867,45 @@ label {
   grid-column: span 2;
 }
 
+.consent-dialog {
+  width: min(560px, calc(100vw - 32px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+  padding: 22px;
+}
+
+.consent-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.consent-dialog h3,
+.consent-dialog p {
+  margin: 0;
+}
+
+.check-consent {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid #e4eaf1;
+  border-radius: 6px;
+  padding: 12px;
+  line-height: 1.45;
+}
+
+.check-consent input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 @media (max-width: 1180px) {
   .private-app,
   .dashboard-layout,

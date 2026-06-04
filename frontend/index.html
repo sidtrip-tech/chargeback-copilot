@@ -169,7 +169,7 @@
               </select>
             </label>
             <button id="generateBtn">Generate packet</button>
-            <a id="exportBtn" class="button ghost disabled" href="#" target="_blank" rel="noreferrer">Export / Save PDF</a>
+            <button id="exportBtn" class="button ghost disabled" type="button">Export / Save PDF</button>
           </div>
         </section>
 
@@ -249,7 +249,7 @@
                 </div>
                 <div class="completed-actions">
                   <span class="pill">Ready to export</span>
-                  <a id="completedExportBtn" class="button" href="#" target="_blank" rel="noreferrer">Export / Save PDF</a>
+                  <button id="completedExportBtn" class="button" type="button">Export / Save PDF</button>
                 </div>
               </div>
 
@@ -351,6 +351,20 @@
           </div>
         </section>
       </main>
+
+      <dialog id="exportConsentDialog" class="consent-dialog">
+        <form id="exportConsentForm" method="dialog" class="stack-form">
+          <h3>Before Export</h3>
+          <p class="muted">Confirm these points before saving or sending your packet.</p>
+          <label class="check-consent"><input name="truthful" type="checkbox" required /> The information in this packet is truthful to the best of my knowledge.</label>
+          <label class="check-consent"><input name="reviewed" type="checkbox" required /> I reviewed the generated claims and evidence citations.</label>
+          <label class="check-consent"><input name="no_advice" type="checkbox" required /> I understand this is preparation support, not legal, financial, banking, or issuer advice.</label>
+          <div class="dialog-actions">
+            <button id="cancelExportBtn" class="subtle-button" type="button">Cancel</button>
+            <button type="submit">Continue to export</button>
+          </div>
+        </form>
+      </dialog>
     </div>
     <script src="/app.js"></script>
   </body>

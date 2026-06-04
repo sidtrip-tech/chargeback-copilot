@@ -179,6 +179,8 @@ After enabling AI:
 
 Packet export is currently PDF-ready HTML. The export page includes print styles and a **Save as PDF** button that opens the browser print dialog. This avoids adding a server-side PDF renderer before the core packet and evidence workflow stabilizes.
 
+Before the export page opens from the app, users must acknowledge that the packet is truthful to the best of their knowledge, that they reviewed generated claims and citation IDs, and that the product is preparation support rather than legal, financial, banking, or issuer advice. The acknowledgement is recorded in the audit log.
+
 Native PDF generation is still a future upgrade. When added, it should run as a background job and store generated PDFs in object storage.
 
 ## Background Jobs

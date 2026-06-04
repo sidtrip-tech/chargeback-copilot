@@ -404,6 +404,11 @@ class Handler(BaseHTTPRequestHandler):
                 body = self._read_json()
                 self._send_json(api.generate_packet(dispute_id, self._current_user_id(), body.get("mode", "template")))
                 return
+            if path.startswith("/api/disputes/") and path.endswith("/export-consent"):
+                dispute_id = path.split("/")[3]
+                body = self._read_json()
+                self._send_json(api.record_export_consent(dispute_id, body, self._current_user_id()))
+                return
             if path.startswith("/api/disputes/") and path.endswith("/outcome"):
                 dispute_id = path.split("/")[3]
                 body = self._read_json()

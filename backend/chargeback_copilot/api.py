@@ -513,6 +513,37 @@ def save_outcome_feedback(dispute_id: str, payload: Dict[str, Any], user_id: str
     return detail(dispute_id, user_id)
 
 
+def record_export_consent(dispute_id: str, payload: Dict[str, Any], user_id: str = DEMO_USER_ID) -> Dict[str, Any]:
+    data = detail(dispute_id, user_id)
+    packet = data["packet"]
+    if not packet:
+        raise ValueError("Generate a dispute packet before export.")
+    if not data["export_ready"]:
+        raise ValueError(data["export_reason"])
+    required = {
+        "truthful": "Confirm the packet is truthful to the best of your knowledge.",
+        "reviewed": "Confirm you reviewed generated claims and evidence citations.",
+        "no_advice": "Confirm you understand this is preparation support, not legal, financial, banking, or issuer advice.",
+    }
+    missing = [message for key, message in required.items() if payload.get(key) is not True]
+    if missing:
+        raise ValueError(" ".join(missing))
+    _audit(
+        user_id,
+        "packet.export_consent_acknowledged",
+        "dispute",
+        dispute_id,
+        {
+            "packet_id": packet["id"],
+            "mode": packet.get("mode", ""),
+            "truthful": "True",
+            "reviewed": "True",
+            "no_advice": "True",
+        },
+    )
+    return {"ok": True}
+
+
 def export_packet(dispute_id: str, user_id: str = DEMO_USER_ID) -> str:
     data = detail(dispute_id, user_id)
     packet = data["packet"]

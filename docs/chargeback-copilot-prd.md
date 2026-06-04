@@ -228,6 +228,8 @@ Every factual claim must cite one or more evidence artifacts. If evidence is mis
 
 The user exports the packet as Markdown, HTML, or PDF-ready content. The MVP does not submit the dispute directly.
 
+Before export, the user must acknowledge that the packet is truthful to the best of their knowledge, that they reviewed generated claims and citation IDs, and that Chargeback Copilot is preparation support rather than legal, financial, banking, or issuer advice. The acknowledgement should be recorded for auditability.
+
 ### 9. Record Outcome Feedback
 
 After a completed/export-ready packet has been submitted through the user's official issuer channel, the user can record the real-life result:
@@ -325,6 +327,7 @@ The user may add an optional note about what happened. Outcome feedback is for p
 - Export bank-ready packet as Markdown or HTML in MVP.
 - Include evidence index and citation IDs.
 - Include a disclaimer that the packet is preparation support, not legal or financial advice.
+- Require a pre-export acknowledgement that information is truthful to the best of the user's knowledge, citations were reviewed, and the product is not legal, financial, banking, or issuer advice.
 
 ### Outcome Feedback
 
@@ -558,7 +561,6 @@ Current foundation work has begun with local session-based access, user-owned pa
 
 ## 13. Open Questions
 
-- Should the product require users to confirm they are submitting truthful information before export?
 - Should weak cases be exportable with warnings, or should high-severity gaps block export?
 - Should the MVP support file uploads immediately, or start with manual evidence entry first?
 - Should the product include merchant-contact templates before recommending bank dispute preparation?
@@ -588,5 +590,6 @@ Current foundation work has begun with local session-based access, user-owned pa
 - Dashboard number cards are contextual by tab and do not show the same global metrics across all statuses.
 - Outcome feedback is absent from In Progress and available only for Completed packets.
 - Outcome feedback is never represented as prediction, guarantee, legal advice, financial advice, or issuer guidance.
+- Export requires a user acknowledgement for truthful information, reviewed citations, and no legal, financial, banking, or issuer advice before opening the packet.
 - Production roadmap exists and describes authentication, user data boundaries, Postgres, secure evidence uploads, object storage, background jobs, PDF export, compliance, monitoring, deployment, and test strategy.
 - Production build remains preparation/export only and does not introduce direct bank submission.
